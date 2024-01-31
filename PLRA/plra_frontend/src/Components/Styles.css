@@ -1,0 +1,387 @@
+.dropdown {
+    height: 0;
+    overflow: hidden;
+    background-color: red;
+    transition: 1.3s ease-out;
+}
+
+.inputBox {
+    display: flex;
+    align-items: center;
+}
+
+.inputBox label {
+    display: inline-block;
+    width: 230px;
+}
+
+.InputLable {
+    min-width: 200px;
+    min-height: 200px;
+    padding: 16px 0px;
+    border: 2px dashed green;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2;
+}
+
+.InputFilee {
+    width: 100%;
+    border: 1px solid #d3d3d3;
+    height: 31px;
+    border-radius: 3.2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 16px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.uploadBox {
+    height: 31px;
+    width: 31px;
+    background-color: #efefef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+.custom-textarea {
+    width: 100%;
+    min-height: 40px;
+    resize: none;
+    font-size: 13px;
+    border: 1px solid #bdbcbc;
+    background-color: #f6f5f4;
+    padding: 5px 14px;
+    border-radius: 4px;
+    transition: border-color 0.3s ease;
+    border-color: #bdbcbc;
+}
+
+.custom-textarea:hover,
+.custom-textarea:focus {
+    border-color: green;
+}
+.textArea {
+    display: flex;
+    align-items: start;
+}
+
+.textArea label {
+    display: inline-block;
+    width: 220px;
+}
+
+/* styles.css */
+.dropdown-menu {
+    overflow: visible;
+    filter: drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.32));
+    margin-top: 1.5rem;
+}
+
+.dropdown-menu:before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 14px;
+    width: 10px;
+    height: 10px;
+    background-color: #F0F0F0;
+    /* You can adjust the background color */
+    transform: translateY(-50%) rotate(45deg);
+    z-index: 0;
+}
+
+.tabbar {
+    display: flex;
+    margin-bottom: 2px;
+}
+
+.tabbar li {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.2rem 1rem;
+    border-left: 1px solid #e7e7e7;
+}
+
+#datagrid-container .MuiButton-root.MuiButton-textPrimary:contains("Hide all") {
+    display: none;
+}
+
+.Box_Class {
+    background-color: rgba(55, 146, 55, 0.05);
+    cursor: pointer;
+    position: relative;
+    max-height: 60px;
+}
+
+.Box_Class::before {
+    content: "";
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    height: 60px;
+    border-left: 4px solid #379237;
+}
+
+.Setup_Sidebar {
+    background-color: rgba(55, 146, 55, 0.05);
+    cursor: pointer;
+    position: relative;
+    max-height: 30px;
+}
+
+.Setup_Sidebar::before {
+    content: "";
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    height: 29px;
+    border-left: 4px solid #379237;
+}
+
+.setup_subtittle {
+    cursor: pointer;
+    position: relative;
+    max-height: 30px;
+    padding-left: 10px;
+}
+
+.setup_subtittle::before {
+    content: "";
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    margin-top: 6px;
+    height: 6px;
+    width: 6px;
+    background-color: #379237;
+    border-radius: 50%;
+}
+.inputBox {
+    display: flex;
+    align-items: center;
+}
+
+.inputBox label {
+    display: inline-block;
+    width: 170px;
+    font-size: 14px;
+}
+
+/* Table  */
+table,
+th,
+td {
+    border-collapse: collapse;
+}
+
+.sort_icon {
+    margin-left: 10px;
+    display: hidden;
+    font-size: 12px;
+}
+
+.Table {
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    padding: 0;
+    width: 100%;
+}
+
+.T_Head {
+    border-radius: 8px;
+    color: white;
+}
+
+.T_Head_Column {
+    background-color: var(--green-main);
+}
+
+.T_Row {
+    border-bottom: 1px solid rgba(150, 150, 150, 0.5);
+}
+
+.T_Row:hover {
+    background-color: rgb(226, 226, 226);
+    cursor: pointer;
+}
+
+.T_Row_Data {
+    max-width: 100px;
+    text-align: left;
+    padding: 2px 10px;
+    border: 1px solid rgba(150, 150, 150, 0.5);
+}
+
+.T_Row_Data:first-child:hover {
+    color: var(--green-main);
+    text-decoration: underline;
+}
+
+.T_Column {
+    position: relative;
+    padding: 5px 10px;
+    text-align: left;
+}
+
+.T_Column::after {
+    right: 0;
+    background: blue;
+    width: 1px;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    z-index: 1;
+    content: "";
+    cursor: col-resize;
+
+}
+
+.button {
+    padding: 0.5em 2em;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #000;
+    background-color: #fff;
+    border: none;
+    border-radius: 6px;
+    box-shadow: 0px 0px 15px 2px #EFEFEF;
+    transition: all 0.3s ease 0s;
+    cursor: pointer;
+    outline: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.button:hover {
+    background-color: var(--green-main);
+    color: #fff;
+}
+
+.icon {
+    margin-top: 3px;
+    margin-right: 3px;
+}
+
+.button:hover .icons {
+    background-color: #23c483;
+    box-shadow: 0px 15px 20px rgba(46, 229, 157, 0.4);
+    color: #fff;
+    fill: #fff;
+}
+
+.button-container .button:hover .icon svg {
+    fill: white;
+}
+
+.button:active {
+    transform: translateY(-1px);
+}
+.HeadingBarLine{
+    width: 96%;
+    border-top: 1px solid rgba(195, 195, 195,0.7);
+}
+
+.smartInput{
+    border: 0.5px solid rgba(195, 195, 195,0.7);
+    border-radius: 4px;
+    height: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+}
+.smartInput label{
+    display: inline-block;
+    width: 40px;
+    border-right: 1px solid rgba(195, 195, 195,0.7);
+}
+.smartInput {
+    position: relative;
+}
+
+.smartInput input {
+    width: calc(100% - 40px); 
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+.smartInput::after {
+    content: "Days";
+    position: absolute;
+    top: 0;
+    right: 10px; 
+    height: 100%;
+    display: flex;
+    align-items: center;
+    color: #555; 
+}
+
+
+
+
+
+/* Loading  */
+.loader-Outer-div{
+    width: 100%;
+    height: 70vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.ldsEllipsis {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+.ldsEllipsis div {
+  position: absolute;
+  top: 33px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--green-main);
+  animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+.ldsEllipsis div:nth-child(1) {
+  left: 8px;
+  animation: ldsEllipsis1 0.8s infinite;
+}
+.ldsEllipsis div:nth-child(2) {
+  left: 8px;
+  animation: ldsEllipsis2 0.8s infinite;
+}
+.ldsEllipsis div:nth-child(3) {
+  left: 32px;
+  animation: ldsEllipsis2 0.8s infinite;
+}
+.ldsEllipsis div:nth-child(4) {
+  left: 56px;
+  animation: ldsEllipsis3 0.8s infinite;
+}
+@keyframes ldsEllipsis1 {
+  0% { transform: scale(0)}
+  100% { transform: scale(1)}
+}
+@keyframes ldsEllipsis3 {
+  0% { transform: scale(1); }
+  100% { transform: scale(0); }
+}
+@keyframes ldsEllipsis2 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(24px, 0); }
+}

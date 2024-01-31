@@ -1,0 +1,17 @@
+@media print {
+  .print-page {
+    padding-top: 50px;
+    padding-bottom: 50px;
+    page-break-before: always;
+  }
+}
+
+.print-page ul > li {
+  font-size: 15px;
+}
+.AnnualAssessmentTable {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 0 15px 2px #efefef;
+  padding: 30px 30px;
+}

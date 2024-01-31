@@ -1,0 +1,49 @@
+[
+    {
+        "id": 1,
+        "title": "Basic Information"
+    },
+    {
+        "id": 2,
+        "title": "Education"
+    },
+    {
+        "id": 3,
+        "title": "Personal Information"
+    },
+    {
+        "id": 4,
+        "title": "Address"
+    },
+    {
+        "id": 5,
+        "title": "Contact Information"
+    },
+    {
+        "id": 6,
+        "title": "Family Information"
+    },
+    {
+        "id": 7,
+        "title": "Employment History"
+    },
+    {
+        "id": 8,
+        "title": "Trainings"
+    },
+    {
+        "id": 9,
+        "title": "Skills"
+    },
+    {
+        "id": 10,
+        "title": "References"
+    },
+    {
+        "id": 11,
+        "title": "Personal Documents"
+    }, {
+        "id": 12,
+        "title": "Position"
+    }
+]

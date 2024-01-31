@@ -1,0 +1,55 @@
+
+.employee_form_dashboard {
+  width: 100%;
+  border: 1px solid #e2e1e0;
+  border-radius: 4px;
+  padding: 20px 10px 10px 10px;
+  height: calc(100vh - 275px);
+  overflow-y: scroll;
+  padding-top: 30px;
+}
+.employee_form_border {
+  width: 100%;
+  border: 1px solid #e2e1e0;
+  border-radius: 4px;
+  padding: 2px;
+}
+.employee_form_dashboard_Img {
+  width: 200px;
+  height: 200px;
+  margin: auto;
+  border-radius: 50%;
+  background-color: rgb(235, 235, 235);
+  border: 2px solid var(--green-main);
+  overflow: hidden;
+}
+.employee_form_dashboard_Img img {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+}
+.employee_form_dashboard_detail_box {
+  width: 100%;
+  border: 1px solid #e2e1e0;
+  padding: 14px 10px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 4;
+  transition: border 0.3s ease;
+}
+.employee_form_dashboard_detail_box:hover {
+  border: 1px solid var(--green-main);
+}
+.employee_form_dashboard_detail_box:hover {
+  border: 1px solid var(--green-main);
+}
+.form_sidebar {
+  width: 97%;
+  border: 1px solid #e2e1e0;
+  border-radius: 4px;
+  height: calc(100vh - 275px);
+  overflow-y: scroll;
+}
