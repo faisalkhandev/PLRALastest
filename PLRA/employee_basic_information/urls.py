@@ -33,6 +33,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('models/', ModelListView.as_view(), name='model-list'),
     path('routes/', Routes.as_view(), name='route-list'),
+    path('employee-mini-dashboard/<int:employee_id>/', EmployeeMiniDashboard.as_view(), name='employee-mini-dashboard'),
     # path('recent-action/', RecentActionsAPI, name='recent-actions'),
     # path('api-token-auth/', views.obtain_auth_token()),
     # path('positions/', views.obtain_auth_token),

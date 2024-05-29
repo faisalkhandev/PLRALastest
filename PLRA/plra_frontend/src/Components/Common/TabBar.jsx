@@ -56,5 +56,6 @@ export default function TabBar() {
     <Card sx={{ width: '100%', bgcolor: '#F9F8F7', borderRadius: '8px' }}>
       {renderTabs()}
     </Card>
+    
   );
 }

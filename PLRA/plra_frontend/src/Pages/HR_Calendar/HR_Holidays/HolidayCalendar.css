@@ -1,0 +1,31 @@
+/* HolidayCalendar.css */
+.fc .fc-daygrid-day-events {
+    margin: 0 !important; 
+  }
+  
+  .fc .fc-daygrid-day-top {
+    justify-content: center; 
+  }
+  
+  .event-content {
+    background-color: green;
+    width: 100%; 
+    padding: 2px 0; 
+    box-sizing: border-box; 
+    text-align: center; 
+    
+  }
+  
+  .event-title {
+    font-weight: bold; 
+  }
+
+  .demo-app-sidebar-section{
+    border-radius: 10px;
+      width: 300px;
+      line-height: 1.5;
+      background: #eaf9ff;
+      border-right: 1px solid #d3e2e8;
+      padding: 2rem;
+    
+  }

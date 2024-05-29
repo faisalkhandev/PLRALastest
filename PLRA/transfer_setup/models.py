@@ -14,6 +14,8 @@ import googlemaps
 from geopy.distance import geodesic
 from math import radians, sin, cos, sqrt, atan2
 from geopy.geocoders import Nominatim
+from django.db.models import Q
+import random
 # Create your models here.
 class TransferRatingType(models.Model):
     CATEGORY_CHOICES = (
@@ -22,6 +24,8 @@ class TransferRatingType(models.Model):
     )
     name = models.CharField(max_length=50)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="Open Merit")
+    def __str__(self) -> str:
+        return self.name
     def save(self):
         self.name = self.name.lower().strip()
         super(TransferRatingType, self).save()
@@ -50,21 +54,25 @@ class WedlockRatingFarmula(models.Model):
     within_district_fixed_marks = models.IntegerField()
     max_marks = models.IntegerField()
     across_district_fixed_marks = models.IntegerField()
+
+    class Meta:
+        verbose_name = "Rating Farmula"
+        verbose_name_plural = "Rating Farmulas"
 class TenureRatingFarmula(models.Model):
     CATEGORY_CHOICES = (
         ('Open Merit', 'Open Merit'),
         ('Hardship' , 'Hardship')
     )
     name = models.CharField(max_length=50)
-    formula_type = models.ForeignKey(TransferRatingType, on_delete=models.PROTECT, limit_choices_to={'name' : 'tenure'})
+    formula_type = models.ForeignKey(TransferRatingType, on_delete=models.PROTECT)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     max_marks = models.IntegerField()
     minimum_tenure_months = models.IntegerField()
     total_tenure_months = models.IntegerField()
-    factor = models.IntegerField(blank=True)
+    factor = models.FloatField(blank=True)
     total_month_served = models.IntegerField(blank=True)
     def save(self):
-        employee = Employee.objects.get(id=2)
+        employee = Employee.objects.first()
         date_of_joining = datetime.strptime(str(employee.date_of_joining), "%Y-%m-%d")
         today = datetime.strptime(str(datetime.today().date()), "%Y-%m-%d")
         # total_months = (today.year - date_of_joining.year) * 12 + today.month - date_of_joining.month
@@ -110,13 +118,91 @@ class TransferRatingModelType(models.Model):
 def my_handler(sender, instance, **kwargs):
     instance.model.total_marks += instance.max_marks
     instance.model.save()
+    
 class E_Transfer_Window_Period(models.Model):
     name = models.CharField(max_length=50)
     description = models.CharField(max_length=50)
     from_date = models.DateField()
     to_date = models.DateField()
     status = models.BooleanField()
-    open_position = models.ManyToManyField(Position,  limit_choices_to={ 'open_position' : True})
+    open_position = models.ManyToManyField(Position)
+    def save(self, *args, **kwargs):
+        if self.status:
+            # Check if any other record has status=True
+            # if E_Transfer_Window_Period.objects.exclude(id=self.id).filter(status=True).exists():
+            #     raise ValidationError("A record with status=True already exists.")
+ 
+            # Check for overlapping date ranges with status=True
+            overlapping_periods = E_Transfer_Window_Period.objects.exclude(id=self.id).filter(
+                status=True,
+                from_date__lte=self.to_date,
+                to_date__gte=self.from_date
+            )
+            if overlapping_periods.exists():
+                raise ValidationError("There is already a record with status=True within the same date range.")
+ 
+        super(E_Transfer_Window_Period, self).save(*args, **kwargs)
+
+class E_Transfer_Rating_Matrix(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, blank=True,    null=True)
+    e_transfer_process=models.ForeignKey('E_Transfer_Process', on_delete=models.PROTECT, blank=True,    null=True)
+    category = models.CharField(max_length=50, blank=True,  null=True)
+    max_marks = models.IntegerField(blank=True,   null=True)
+    system_generated_marks = models.IntegerField(blank=True,  null=True)
+    concerned_person_marks = models.IntegerField(blank=True,  null=True)
+
+
+class HRDirectorETransferApproval(models.Model):
+    # STATUS_CHOICES = (
+    #     ('Marked', 'Marked'),
+    #     ('Approved' , 'Approved'),
+    #     ('Reject' , 'Reject')
+    #     )
+    position= models.ForeignKey(Position, on_delete=models.PROTECT, related_name="approvalPosition")
+    e_transfer_process=models.ManyToManyField('E_Transfer_Process')
+    concern_officer_authority=models.ForeignKey(Employee, on_delete=models.PROTECT)
+    visible=models.BooleanField(default=True)
+    max_marks=models.PositiveIntegerField(blank=True,null=True)
+    marks_obtain=models.PositiveIntegerField(blank=True,null=True)
+    e_transfer_approval_date = models.DateField(blank=True,null=True)
+    new_joining_effective_date = models.DateField(blank=True,null=True)
+    remarks = models.TextField(blank=True,null=True)
+    # status = models.CharField(choices=STATUS_CHOICES, max_length=10,default='Marked')
+    def __str__(self):
+        return f"{self.e_transfer_process} -  Approval"        
+    class Meta:
+        verbose_name = "HRDirectorETransferApproval"
+        verbose_name_plural = "HRDirectorETransferApprovals"
+
+
+class ConcernOfficerApproval(models.Model):
+    # STATUS_CHOICES = (
+    #     ('Marked', 'Marked'),
+    #     ('Approved' , 'Approved'),
+    #     ('Reject' , 'Reject')
+    #     )
+    e_transfer_process=models.OneToOneField('E_Transfer_Process', on_delete=models.PROTECT,related_name="ConcernOfficerApproval", blank=True, null=True)
+    concern_officer_authority=models.ForeignKey(Employee, on_delete=models.PROTECT, blank=True, null=True)
+    visible=models.BooleanField(default=True, blank=True, null=True)
+    max_marks=models.PositiveIntegerField(blank=True, null=True)
+    marks_obtain=models.PositiveIntegerField(blank=True, null=True)
+    e_transfer_approval_date = models.DateField(blank=True,null=True)
+    # status = models.CharField(choices=STATUS_CHOICES, max_length=10,default='Marked')
+    new_joining_effective_date = models.DateField(blank=True,null=True)
+    def __str__(self):
+        return f"{self.e_transfer_process} - {self.e_transfer_process.get_status_display()} Approval"
+    # def save(self, *args, **kwargs):
+        
+    #     super(ConcernOfficerApproval, self).save(*args, **kwargs)
+        
+             
+            
+    class Meta:
+        verbose_name = "ConcernOfficerApproval"
+        verbose_name_plural = "ConcernOfficerApprovals"
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 class E_Transfer_Process(models.Model):
     STATUS_CHOICES = (
         ('In Process' , 'In Process'),
@@ -134,108 +220,123 @@ class E_Transfer_Process(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
     status = models.CharField(choices=STATUS_CHOICES, max_length=10,default='In Process')
     e_transfer_apply_date = models.DateField(auto_now=True)
-    transfer_position = models.ForeignKey(E_Transfer_Window_Period,  related_name='OpenPosition', on_delete=models.PROTECT)
+    transfer_window = models.ForeignKey(E_Transfer_Window_Period,  related_name='OpenPosition', on_delete=models.PROTECT)
+    transfer_position = models.ForeignKey(Position, related_name='OpenPosition', on_delete=models.PROTECT)
     transfer_category = models.CharField(choices=TRANSFER_CATEGORY_CHOICES, max_length=50)
-    attachments = models.FileField(upload_to='media/E-transfer_attachments')
+    attachments = models.FileField(upload_to='media/E-transfer_attachments',blank=True,null=True)
     new_joining_date = models.DateField(blank=True,null=True)
     e_transfer_approval_date = models.DateField(blank=True,null=True)
-    def __str__(self):
-        return f"{self.employee} - {self.status} - {self.transfer_category} Transfer"
+    # def __str__(self):
+    #     return f"{self.employee} - {self.status} - {self.transfer_category} Transfer"
     def save(self, *args, **kwargs):
-        self._create_rating_matrix(*args, **kwargs)
-        res=ConcernOfficerApproval.objects.filter(e_transfer_process=self).exists()
-        if not res:
+        is_new = self.pk is None
+        super(E_Transfer_Process, self).save(*args, **kwargs)
+
+        if is_new:
+            self._create_rating_matrix()
             self._calculate_concern_officer_approval()
-        super(E_Transfer_Process, self).save(*args, **kwargs)
-    def _create_rating_matrix(self,*args, **kwargs):
-        employee_spouse = DependentEmploymentHistory.objects.filter(employee=self.employee).first() if DependentEmploymentHistory.objects.filter(employee=self.employee).first() is not None else ''
+
+    def _create_rating_matrix(self):
+        date_of_joining = datetime.strptime(str(self.employee.date_of_joining), "%Y-%m-%d")
+        today = datetime.strptime(str(datetime.today().date()), "%Y-%m-%d")
+        total_months = int((today - date_of_joining).days * 0.032855)
+        employespouse = DependentEmploymentHistory.objects.filter(employee=self.employee).first() or ''
+
+        try:
+            rating_model_to_be_used = TransferRatingModel.objects.get(active=True)
+            open_merit_types = TransferRatingModelType.objects.filter(
+                Q(tranfer_type_category='Open Merit'), Q(model=rating_model_to_be_used)
+            )
+        except TransferRatingModel.DoesNotExist as e:
+            raise ValidationError(e)
+
         if self.transfer_category == 'Open Merit':
-            open_merit_types = TransferRatingModelType.objects.filter(tranfer_type_category='Open Merit')
-            
-            for i in open_merit_types:
-                if i.type.name=='distance':
-                    E_Transfer_Rating_Matrix.objects.create(
-                        employee=self.employee,
-                        e_transfer_process=self,
-                        category='Distance',
-                        max_marks=DistanceRatingFarmula.objects.get(id=1).within_district_max_marks,
-                        system_generated_marks=0,
-                        concerned_person_marks=0
-                    ).save()
-                    if i.type.name == 'tenure':
-                        E_Transfer_Rating_Matrix.objects.create(
-                            employee=self.employee,
-                            e_transfer_process=self,
-                            category='Tenure',
-                            max_marks=TenureRatingFarmula.objects.get(id=1).max_marks,
-                            system_generated_marks=0,
-                            concerned_person_marks=0
-                        ).save()
-                    else:
-                        E_Transfer_Rating_Matrix.objects.create(
-                            employee=self.employee,
-                            e_transfer_process=self,
-                            category=i.type.name,
-                            max_marks=i.max_marks,
-                            system_generated_marks=0,
-                            concerned_person_marks=0
-                        ).save()
+            self._create_open_merit_matrix(open_merit_types, total_months)
+        elif self.transfer_category in ['Disability/Medical', 'Wedlock']:
+            self._create_special_category_matrix(open_merit_types, total_months, employespouse)
         else:
-            try:
-                wedlock_formula = WedlockRatingFarmula.objects.get(id=1)
-                disability_formula = DisabilityRatingFarmula.objects.get(id=1)
+            self._create_default_category_matrix(open_merit_types, total_months, employespouse)
 
-                E_Transfer_Rating_Matrix.objects.create(
-                    employee=self.employee,
-                    e_transfer_process=self,
-                    category='Wedlock',
-                    max_marks=wedlock_formula.max_marks,
-                    system_generated_marks=10 if employee_spouse.job_district == self.employee.center.district else 15,
-                    concerned_person_marks=0
-                ).save()
+    def _create_open_merit_matrix(self, open_merit_types, total_months):
+        for merit_type in open_merit_types:
+            if merit_type.type.name == 'distance':
+                self._create_distance_matrix(0)
+            elif merit_type.type.name == 'tenure':
+                self._create_tenure_matrix(total_months)
 
-                E_Transfer_Rating_Matrix.objects.create(
-                    employee=self.employee,
-                    e_transfer_process=self,
-                    category='Disability',
-                    max_marks=disability_formula.max_marks,
-                    system_generated_marks=disability_formula.max_marks if self.disability_attachments is not None else 0,
-                    concerned_person_marks=0
-                ).save()
+    def _create_special_category_matrix(self, open_merit_types, total_months, employespouse):
+        if self.transfer_category == 'Disability/Medical':
+            self._create_disability_matrix()
+        elif self.transfer_category == 'Wedlock':
+            self._create_wedlock_matrix(employespouse)
 
-            except WedlockRatingFarmula.DoesNotExist:
-                # Handle the case where WedlockRatingFarmula with the given id does not exist
-                # You can log an error, raise an exception, or handle it in another way based on your needs
-                raise ValueError("WedlockRatingFarmula not found.")
+        self._create_open_merit_matrix(open_merit_types, total_months)
 
-            except DisabilityRatingFarmula.DoesNotExist:
-                # Handle the case where DisabilityRatingFarmula with the given id does not exist
-                # You can log an error, raise an exception, or handle it in another way based on your needs
-                raise ValueError("DisabilityRatingFarmula not found.")
+    def _create_default_category_matrix(self, open_merit_types, total_months, employespouse):
+        self._create_wedlock_matrix(employespouse)
+        self._create_disability_matrix()
+        self._create_open_merit_matrix(open_merit_types, total_months)
 
-            except Exception as e:
-                # Handle other exceptions that might occur during the creation of E_Transfer_Rating_Matrix objects
-                # You can log an error, raise an exception, or handle it in another way based on your needs
-                raise ValueError(f"An error occurred: {str(e)}")
+    def _create_distance_matrix(self, system_generated_marks):
+        E_Transfer_Rating_Matrix.objects.create(
+            employee=self.employee,
+            e_transfer_process=self,
+            category='Distance',
+            max_marks=DistanceRatingFarmula.objects.first().within_district_max_marks,
+            system_generated_marks=random(20, 50),
+            concerned_person_marks=system_generated_marks
+        )
 
-        super(E_Transfer_Process, self).save(*args, **kwargs)
+    def _create_tenure_matrix(self, total_months):
+        max_marks = TenureRatingFarmula.objects.first().max_marks
+        marks = max_marks if total_months * TenureRatingFarmula.objects.first().factor >= max_marks else total_months * TenureRatingFarmula.objects.first().factor
+        E_Transfer_Rating_Matrix.objects.create(
+            employee=self.employee,
+            e_transfer_process=self,
+            category='Tenure',
+            max_marks=max_marks,
+            system_generated_marks=marks,
+            concerned_person_marks=marks
+        )
+
+    def _create_disability_matrix(self):
+        max_marks = DisabilityRatingFarmula.objects.first().max_marks
+        marks = max_marks if self.attachments else 0
+        E_Transfer_Rating_Matrix.objects.create(
+            employee=self.employee,
+            e_transfer_process=self,
+            category='Disability',
+            max_marks=max_marks,
+            system_generated_marks=marks,
+            concerned_person_marks=marks
+        )
+
+    def _create_wedlock_matrix(self, employespouse):
+        max_marks = WedlockRatingFarmula.objects.first().max_marks
+        marks = 10 if employespouse and employespouse.job_district == self.employee.center.district else 15
+        E_Transfer_Rating_Matrix.objects.create(
+            employee=self.employee,
+            e_transfer_process=self,
+            category='Wedlock',
+            max_marks=max_marks,
+            system_generated_marks=marks,
+            concerned_person_marks=marks
+        )
+
     def _calculate_concern_officer_approval(self):
         try:
             approving_authority_position = CompetentAuthority.objects.get(designation='CONCERN OFFICER')
-            
-        except ObjectDoesNotExist:
+            approving_authority = Employee.objects.filter(position=approving_authority_position.employee_position).first()
+            if not approving_authority:
+                raise ValueError("There is no employee on Concern Officer position.")
+        except CompetentAuthority.DoesNotExist:
             raise ValueError("Concern Officer authority not found.")
-        try:
-            approving_authority=Employee.objects.filter(position=approving_authority_position.employee_position).first()
-        except ObjectDoesNotExist:
-            raise ValueError("There is no employee on Concern Officer position.")  
+        except Employee.DoesNotExist:
+            raise ValueError("There is no employee on Concern Officer position.")
 
-        list_of_marks = E_Transfer_Rating_Matrix.objects.filter(employee=self.employee, e_transfer_process=self)
-        related_max_marks = 0
-        related_marks_obtain = 0
-        for i in list_of_marks:
-            related_max_marks = related_max_marks + i.max_marks
-            related_marks_obtain = related_marks_obtain + i.concerned_person_marks
+        list_of_marks = E_Transfer_Rating_Matrix.objects.filter(e_transfer_process=self)
+        related_max_marks = sum(i.max_marks for i in list_of_marks)
+        related_marks_obtain = sum(i.concerned_person_marks for i in list_of_marks)
 
         ConcernOfficerApproval.objects.create(
             e_transfer_process=self,
@@ -244,146 +345,8 @@ class E_Transfer_Process(models.Model):
             concern_officer_authority=approving_authority
         )
 
-        
-        
-           
-class ConcernOfficerApproval(models.Model):
-    STATUS_CHOICES = (
-        ('Pending' , 'Pending'),
-        ('Marked', 'Marked'),
-        ('Approved' , 'Approved'),
-        ('Reject' , 'Reject')
-        )
-      
-    e_transfer_process=models.OneToOneField(E_Transfer_Process, on_delete=models.PROTECT)
-    concern_officer_authority=models.ForeignKey(Employee, on_delete=models.PROTECT)
-    visible=models.BooleanField(default=True)
-    max_marks=models.PositiveIntegerField()
-    marks_obtain=models.PositiveIntegerField()
-    e_transfer_approval_date = models.DateField(blank=True,null=True)
-    new_joining_effective_date = models.DateField(blank=True,null=True)
-    remarks = models.TextField(blank=True,null=True)
-    status = models.CharField(choices=STATUS_CHOICES, max_length=10,default='Pending')
-    def __str__(self):
-        return f"{self.e_transfer_process} - {self.get_status_display()} Approval"
-    def save(self, *args, **kwargs):
 
 
-        # Update E_Transfer_Process based on ConcernOfficerApproval status
-        if  self.status == 'Approved':
-            now = datetime.now().date()
-
-            # Update E_Transfer_Process approval date
-            self.e_transfer_process.e_transfer_approval_date = now
-            self.e_transfer_approval_date = now
-            
-            self.e_transfer_process.status=self.status
-
-            # Update E_Transfer_Process new_joining_date if new_joining_effective_date is provided
-            if self.new_joining_effective_date:
-                
-                self.e_transfer_process.new_joining_date = self.new_joining_effective_date
-                
-
-            # Save the updated E_Transfer_Process
-            self.e_transfer_process.save()
-        elif self.status == 'Marked':
-            self.e_transfer_process.status=self.status
-            self.e_transfer_process.save()
-            if not  HRDirectorETransferApproval.objects.filter(e_transfer_process=self.e_transfer_process).exists():
-                try:
-                    approving_authority_position = CompetentAuthority.objects.get(designation='HR DIRECTOR')
-                    
-                except ObjectDoesNotExist:
-                    raise ValueError("Concern Officer authority not found.")
-                try:
-                    approving_authority=Employee.objects.filter(position=approving_authority_position.employee_position).first()
-                except ObjectDoesNotExist:
-                    raise ValueError("There is no employee on HR Director position.")  
-
-                list_of_marks = E_Transfer_Rating_Matrix.objects.filter(employee=self.e_transfer_process.employee, e_transfer_process=self.e_transfer_process)
-                related_max_marks = 0
-                related_marks_obtain = 0
-                for i in list_of_marks:
-                    related_max_marks = related_max_marks + i.max_marks
-                    related_marks_obtain = related_marks_obtain + i.concerned_person_marks
-
-                HRDirectorETransferApproval.objects.create(
-                    e_transfer_process=self.e_transfer_process,
-                    max_marks=related_max_marks,
-                    marks_obtain=related_marks_obtain,
-                    concern_officer_authority=approving_authority,
-                    status=self.status
-                )
-        elif self.status == 'Reject':
-            self.e_transfer_process.status=self.status
-            self.e_transfer_process.save()
-        super(ConcernOfficerApproval, self).save(*args, **kwargs)
-        
-             
-            
-    class Meta:
-        verbose_name = "ConcernOfficerApproval"
-        verbose_name_plural = "ConcernOfficerApprovals"
-
-class HRDirectorETransferApproval(models.Model):
-    STATUS_CHOICES = (
-        ('Marked', 'Marked'),
-        ('Approved' , 'Approved'),
-        ('Reject' , 'Reject')
-        )
-      
-    e_transfer_process=models.OneToOneField(E_Transfer_Process, on_delete=models.PROTECT)
-    concern_officer_authority=models.ForeignKey(Employee, on_delete=models.PROTECT)
-    visible=models.BooleanField(default=True)
-    max_marks=models.PositiveIntegerField()
-    marks_obtain=models.PositiveIntegerField()
-    e_transfer_approval_date = models.DateField(blank=True,null=True)
-    new_joining_effective_date = models.DateField(blank=True,null=True)
-    remarks = models.TextField(blank=True,null=True)
-    status = models.CharField(choices=STATUS_CHOICES, max_length=10,default='Marked')
-    def __str__(self):
-        return f"{self.e_transfer_process} - {self.get_status_display()} Approval"
-    def save(self, *args, **kwargs):
-
-
-        # Update E_Transfer_Process based on HRDirectorETransferApproval status
-        if  self.status == 'Approved':
-            now = datetime.now().date()
-
-            # Update E_Transfer_Process approval date
-            self.e_transfer_process.e_transfer_approval_date = now
-            self.e_transfer_approval_date = now
-            
-            self.e_transfer_process.status=self.status
-
-            # Update E_Transfer_Process new_joining_date if new_joining_effective_date is provided
-            if self.new_joining_effective_date:
-                
-                self.e_transfer_process.new_joining_date = self.new_joining_effective_date
-
-            # Save the updated E_Transfer_Process
-            self.e_transfer_process.save()
-        
-        elif self.status == 'Reject':
-            self.e_transfer_process.status=self.status
-            self.e_transfer_process.save()
-        super(HRDirectorETransferApproval, self).save(*args, **kwargs)
-        
-             
-            
-    class Meta:
-        verbose_name = "HRDirectorETransferApproval"
-        verbose_name_plural = "HRDirectorETransferApprovals"
-
-
-class E_Transfer_Rating_Matrix(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
-    e_transfer_process=models.ForeignKey(E_Transfer_Process, on_delete=models.PROTECT)
-    category = models.CharField(max_length=50)
-    max_marks = models.IntegerField()
-    system_generated_marks = models.IntegerField()
-    concerned_person_marks = models.IntegerField()
 class Address(models.Model):
     address_line = models.CharField(max_length=100)
     latitude = models.FloatField(blank=True, null=True)
@@ -421,3 +384,4 @@ class Address(models.Model):
         else:
             self.distance = None
         super().save(*args, **kwargs)
+

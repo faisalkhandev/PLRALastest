@@ -1,15 +1,12 @@
 from django.contrib import admin
-from .models import *
-# Register your models here.
-admin.site.register(LeaveDependency)
-admin.site.register(LeaveType)
-admin.site.register(SalaryDeductible)
-admin.site.register(LeaveApply)
-admin.site.register(LeaveDependableDetail)
-admin.site.register(LeaveNonDependableDetail)
-admin.site.register(AccrueTable)
-admin.site.register(LeaveDependableBucket)
-admin.site.register(LeaveApprovals)
-admin.site.register(Approvals)
-admin.site.register(LeaveCount)
-admin.site.register(SuperApprovals)
+from payroll.Models.PayrollPeriod import *
+from django.apps import apps
+
+# Register all models with custom admin classes
+app_models = apps.get_app_config('leave_setup').get_models()
+for model in app_models:
+    class CustomAdmin(admin.ModelAdmin):
+        list_display = [field.name for field in model._meta.fields]
+        list_filter = [field.name for field in model._meta.fields]
+        search_fields = [field.name for field in model._meta.fields]
+    admin.site.register(model, CustomAdmin)

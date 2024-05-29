@@ -6,13 +6,12 @@ export const leaveApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://127.0.0.1:8000/",
     prepareHeaders: (headers, { getState }) => {
-      const authToken = sessionStorage.getItem("authToken");
+      const authToken = Cookies.get("authToken");
       const csrfToken = Cookies.get("csrftoken");
       if (authToken && csrfToken) {
         headers.set("Authorization", `Token ${authToken}`);
         headers.set("X-CSRFToken", csrfToken);
       }
-      headers.set("Content-Type", "application/json");
       return headers;
     },
   }),
@@ -108,14 +107,14 @@ export const leaveApi = createApi({
     }),
     updateLeaveDependableDetail: builder.mutation({
       query: ({ selectRowID, updateLeaveDependencyData }) => ({
-        url: `/leave/LeaveDependableDetailAPI/{selectRowID}/`,
+        url: `/leave/LeaveDependableDetailAPI/${selectRowID}/`,
         method: "PUT",
         body: updateLeaveDependencyData,
       }),
     }),
     deleteLeaveDependableDetail: builder.mutation({
       query: ({ selectRowID }) => ({
-        url: `/leave/LeaveDependableDetailAPI/{selectRowID}/`,
+        url: `/leave/LeaveDependableDetailAPI/${selectRowID}/`,
         method: "DELETE",
       }),
     }),
@@ -135,7 +134,7 @@ export const leaveApi = createApi({
     }),
     updateLeaveSalaryDeductible: builder.mutation({
       query: ({ selectRowID, updateLeaveDependencyData }) => ({
-        url: `/leave/SalaryDeductibleAPI/{selectRowID}/`,
+        url: `/leave/SalaryDeductibleAPI/${selectRowID}/`,
         method: "PUT",
         body: updateLeaveDependencyData,
       }),
@@ -197,7 +196,7 @@ export const leaveApi = createApi({
     //LeaveType for Leave Apply Time
     getLeaveApplyTime: builder.query({
       query: () => ({
-        url: "/leave/LeaveTypeAPI/?visible_at_leave_apply_time=true",
+        url: "/leave/LeaveTypeAPI/",
         method: "GET",
       }),
     }),
@@ -209,8 +208,13 @@ export const leaveApi = createApi({
         method: "GET",
       }),
     }),
-
-
+    withdrawleave: builder.mutation({
+      query: ({ id, formData }) => ({
+        url: `leave/LeaveApplyAPI/${id}/`,
+        method: "PUT",
+        body: formData,
+      }),
+    }),
   }),
 });
 
@@ -238,5 +242,5 @@ export const {
   useGetLeaveTypeQuery,
   usePostLeaveTypeMutation,
   useUpdateLeaveTypeMutation,
-
+  useWithdrawleaveMutation
 } = leaveApi;

@@ -6,16 +6,15 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://127.0.0.1:8000/",
     prepareHeaders: (headers, { getState }) => {
-      const authToken = sessionStorage.getItem("authToken");
+      const authToken = Cookies.get("authToken");
       const csrfToken = Cookies.get("csrftoken");
       if (authToken && csrfToken) {
         headers.set("Authorization", `Token ${authToken}`);
         headers.set("X-CSRFToken", csrfToken);
       }
-      headers.set("Content-Type", "application/json");
       return headers;
     },
-  }),
+  }), 
   endpoints: (builder) => ({
     //Family
     getFamilyInformation: builder.query({
@@ -329,19 +328,6 @@ export const api = createApi({
       }),
     }),
 
-    //JobLevel Api's
-    getJobLevel: builder.query({
-      query: () => ({
-        url: "/basic-info/JobLevelapi/",
-        method: "GET",
-      }),
-    }),
-    getJobLevelID: builder.query({
-      query: ({ selectedJob }) => ({
-        url: `/basic-info/JobLevelapi/?job__j_rec_id=${selectedJob}`,
-        method: "GET",
-      }),
-    }),
     postJobLevel: builder.mutation({
       query: (formData) => ({
         url: "/basic-info/JobLevelapi/",
@@ -401,7 +387,7 @@ export const api = createApi({
     }),
     postEmployee: builder.mutation({
       query: (formD) => ({
-        url: "/basic-info/User/",
+        url: "basic-info/User/",
         method: "POST",
         body: formD,
       }),
@@ -481,7 +467,7 @@ export const api = createApi({
     //position
     getPosition: builder.query({
       query: () => ({
-        url: "/basic-info/position/?position_id__contains=_unique",
+        url: "/basic-info/position/?position_id__contains=_01",
         method: "GET",
       }),
     }),
@@ -491,7 +477,12 @@ export const api = createApi({
         method: "GET",
       }),
     }),
-
+    getPosition: builder.query({
+      query: ({ jobid, active }) => ({
+        url: "/basic-info/position/",
+        method: "GET",
+      }),
+    }),
     postPosition: builder.mutation({
       query: (formData) => ({
         url: "/basic-info/position/",
@@ -742,13 +733,20 @@ export const api = createApi({
       }),
     }),
 
-    // //position
-    // getPosition: builder.query({
-    //   query: () => ({
-    //     url: "/basic-info/position/",
-    //     method: "GET",
-    //   }),
-    // }),
+    //position
+    getAllPosition: builder.query({
+      query: () => ({
+        url: "/basic-info/position/?position_id__contains=01",
+        method: "GET",
+      }),
+    }),
+
+    getPosition: builder.query({
+      query: () => ({
+        url: "/basic-info/position/",
+        method: "GET",
+      }),
+    }),
     // postPosition: builder.mutation({
     //   query: (formData) => ({
     //     url: "/basic-info/position/",
@@ -937,15 +935,7 @@ export const api = createApi({
         body: formJoblevelAssignmentData,
       }),
     }),
-    updateJobLevelAssignment: builder.mutation({
-      query: ({ selectedJobId, formJoblevelAssignmentData }) => ({
-        url: `/basic-info/JobLevelAssignmentAPI/${selectedJobId}/`,
-
-        method: "PUT",
-
-        body: formJoblevelAssignmentData,
-      }),
-    }),
+   
     deleteJobLevelAssignment: builder.mutation({
       query: ({ selectedJobId }) => ({
         url: `/basic-info/JobLevelAssignmentAPI/${selectedJobId}/`,
@@ -1357,6 +1347,34 @@ export const api = createApi({
       }),
     }),
 
+    // Dependent Employment History
+    getDependentEmployementHistory: builder.query({
+      query: (id) => ({
+        url: `/master-data/dependentemploymenthistory/?employee__id=${id}`,
+        method: "GET",
+      }),
+    }),
+    postDependentEmployementHistory: builder.mutation({
+      query: (formData) => ({
+        url: "/master-data/dependentemploymenthistory/",
+        method: "POST",
+        body: formData,
+      }),
+    }),
+    updateDependentEmployementHistory: builder.mutation({
+      query: ({ selectRowID, updateDependentEmployeeHistory }) => ({
+        url: `/master-data/dependentemploymenthistory/${selectRowID}/`,
+        method: "PUT",
+        body: updateDependentEmployeeHistory,
+      }),
+    }),
+    deleteDependentEmployementHistory: builder.mutation({
+      query: (selectRowID) => ({
+        url: `/master-data/dependentemploymenthistory/${selectRowID}/`,
+        method: "DELETE",
+      }),
+    }),
+
     //Employement History
     getJobDistrict: builder.query({
       query: () => ({
@@ -1376,6 +1394,28 @@ export const api = createApi({
         url: `/master-data/District/${selectRowID}/`,
         method: "PUT",
         body: updateJobdistrict,
+      }),
+    }),
+
+    // Dependent Employment History
+    getRelation: builder.query({
+      query: (id) => ({
+        url: `/master-data/familyinformation/?&relation__iexact=spouse&employee__id=${id}`,
+        method: "GET",
+      }),
+    }),
+    postRelation: builder.mutation({
+      query: (formData) => ({
+        url: "/master-data/familyinformation/",
+        method: "POST",
+        body: formData,
+      }),
+    }),
+    updateRelation: builder.mutation({
+      query: ({ selectRowID, updateRelation }) => ({
+        url: `/master-data/familyinformation/${selectRowID}/`,
+        method: "PUT",
+        body: updateRelation,
       }),
     }),
     //Contact Information
@@ -1428,14 +1468,6 @@ export const api = createApi({
       }),
     }),
 
-    getJobLevelID: builder.query({
-      query: ({ selectedJob }) => ({
-        url: `/basic-info/JobLevelapi/?job__j_rec_id=${selectedJob}`,
-        method: "GET",
-      }),
-    }),
-
-
     getDistrictID: builder.query({
       query: ({ selectDivision }) => ({
         url: `/basic-info/District/?division__d_rec_id=${selectDivision}`,
@@ -1472,7 +1504,7 @@ export const api = createApi({
     }),
     //Job level get api for position form
     getJobLevelID: builder.query({
-      query: ({ JobID }) => ({
+      query: (JobID) => ({
         url: `/basic-info/JobLevelapi/?job__j_rec_id=${JobID}`,
         method: "GET",
       }),
@@ -1536,9 +1568,20 @@ export const api = createApi({
       query: ({ selectedJobId }) => ({
         url: `/basic-info/JobLevelAssignmentAPI/${selectedJobId}/`,
         method: "DELETE",
+      }), 
+    }),
+    getPositionById: builder.query({
+      query: ({positionId}) => ({
+        url: `/basic-info/position/?p_rec_id=${positionId}`,
+        method: "GET",
       }),
     }),
-
+    getPositionbyid: builder.query({
+      query: ({jobid}) => ({
+        url: `/progression/get_positions/${jobid}/`,
+        method: "GET",
+      }),
+    }),
 
   }),
 });
@@ -1548,9 +1591,8 @@ export const {
   useGetWingQuery, usePostWingMutation, useUpdateWingMutation, useDeleteWingMutation,
   useGetLeaveTypeDependencyQuery, useGetLeaveTypeDependencyUponQuery,
   useGetJobLevelAssignmentQuery, usePostJobLevelAssignmentMutation, useUpdateJobLevelAssignmentMutation,
-  useGetLeaveApplyTimeQuery,
-  useGetLeaveTypeSalaryDecductableQuery,
-  useGetEmployeeQuery, usePostEmployeeMutation, useUpdateEmployeeMutation,
+  useGetLeaveApplyTimeQuery, useGetLeaveTypeSalaryDecductableQuery,
+  useGetEmployeeQuery, usePostEmployeeMutation, useUpdateEmployeeMutation,useDeleteEmployeeMutation,
   useGetSalaryDeductibleQuery, usePostSalaryDeductibleMutation, useUpdateSalaryDeductibleMutation, useDeleteSalaryDeductibleMutation,
   useGetLeaveDependencyQuery, usePostLeaveDependencyMutation, useUpdateLeaveDependencyMutation, useDeleteLeaveDependencyMutation,
   useGetLeaveDependableDetailQuery, usePostLeaveDependableDetailMutation, useUpdateLeaveDependableDetailMutation,
@@ -1567,7 +1609,7 @@ export const {
   useUpdateTehsilMutation, useGetDivisionQuery, usePostDivisionMutation, useUpdateDivisionMutation,
   useGetCenterQuery, usePostCenterMutation, useUpdateCenterMutation, useDeleteEmployeeTitleMutation,
   useGetDistrictQuery, usePostDistrictMutation, useUpdateDistrictMutation,
-  useGetEmployeeTitleQuery, usePostEmployeeTitleMutation, useUpdateEmployeeTitleMutation, useGetPositionTypeQuery,
+  useGetEmployeeTitleQuery, usePostEmployeeTitleMutation, useUpdateEmployeeTitleMutation, useGetPositionsQuery , useGetPositionTypeQuery,
   usePostPositionTypeMutation, useUpdatePositionTypeMutation, usePostJobMutation, useUpdateJobMutation, useDeleteJobMutation,
   useGetPositionQuery, usePostPositionMutation, useUpdatePositionMutation, useDeletePositionMutation,
   useGetJobLevelQuery, usePostJobLevelMutation, useUpdateJobLevelMutation, useDeleteJobLevelMutation,
@@ -1590,12 +1632,16 @@ export const {
   useGetEmployeeReferenceQuery, usePostEmployeeReferenceMutation, useUpdateEmployeeReferenceMutation,
   useGetCityQuery, usePostCityMutation, useUpdateCityMutation, useGetCountryQuery,
   usePostCountryMutation, useUpdateCountryMutation, useGetEmployementHistoryQuery, usePostEmployementHistoryMutation,
-  useUpdateEmployementHistoryMutation, useDeleteEmployementHistoryMutation, useGetJobDistrictQuery, usePostJobDistrictMutation,
-  useGetContactInformationQuery, usePostContactInformationMutation, useUpdateContactInformationMutation, useDeleteContactInformationMutation, useGetAllEmployeeQuery,
+  useUpdateEmployementHistoryMutation, useDeleteEmployementHistoryMutation, useGetDependentEmployementHistoryQuery, 
+  usePostDependentEmployementHistoryMutation, useUpdateDependentEmployementHistoryMutation, 
+  useDeleteDependentEmployementHistoryMutation, useGetJobDistrictQuery, usePostJobDistrictMutation, 
+  useGetRelationQuery, usePostRelationMutation,
+  useGetContactInformationQuery, usePostContactInformationMutation, useUpdateContactInformationMutation, 
+  useDeleteContactInformationMutation, useGetAllEmployeeQuery,useGetPositionbyidQuery,
   useGetPersonalInformationQuery, usePostPersonalInformationMutation, useUpdatePersonalInformationMutation, useGetFamilyInformationQuery,
   usePostFamilyInformationMutation, useUpdateFamilyInformationMutation, useDeleteFamilyInformationMutation, useDeletePositionTypeMutation,
   useDeleteApprovalMatrixAPIMutation, useGetJobLevelAssignmentJobLevelQuery, useGetAllPositionQuery, useDeleteCenterMutation, useDeleteJobLevelValidityMutation,
   useGetJobQuery, useGetJobPositionAssignmentQuery, useGetPositionbyJobCenterFilterQuery, useGetWingSubWingQuery, useDeleteRegionMutation, useDeleteDivisionMutation,
-  useUpdatePositionAssignmentMutation, usePostJobLevelAssignmentforPositionMutation, usePostPositionAssignmentMutation, useDeleteEducationMutation, useDeleteJobLevelAssignmentMutation, useDeletePpgLevelMutation, useDeleteDistrictMutation, useDeleteTehsilMutation, useDeleteHRCalendarYearMutation
-
+  useUpdatePositionAssignmentMutation, usePostJobLevelAssignmentforPositionMutation, usePostPositionAssignmentMutation, useDeleteEducationMutation, 
+  useDeleteJobLevelAssignmentMutation, useDeletePpgLevelMutation, useDeleteDistrictMutation, useDeleteTehsilMutation, useDeleteHRCalendarYearMutation,useGetPositionByIdQuery
 } = api;

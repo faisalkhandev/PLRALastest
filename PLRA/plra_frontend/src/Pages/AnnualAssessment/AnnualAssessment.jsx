@@ -1,18 +1,32 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Typography, Button, Select, MenuItem, Grid } from "@mui/material";
 import plraLogo from "../AnnualAssessment/PLRA.png";
 import { BorderLessInput } from "../../Components";
 import { useReactToPrint } from "react-to-print";
+import { useParams } from "react-router-dom";
+import { useCcoApprovalByIDQuery } from "../../Features/API/AnnualAssessment";
+
+
 import './Style.css'
+import { useGetPositionByIdQuery } from "../../Features/API/API";
+
 
 const AnnualAssessment = () => {
   const [Grade, setGrade] = useState("");
+  const { id } = useParams()
+  const { data: AnnualApprovalListData, isLoading, refetch: refetch } = useCcoApprovalByIDQuery(id);
+  console.log("dataAnnnnnn", AnnualApprovalListData?.results?.[0]);
+  const positionId = AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.position;
+  const { data: positiondata, positionisLoading, refetch: positionrefetch } = useGetPositionByIdQuery({ positionId });
+  console.log("data", positiondata?.results?.[0]);
 
   const printPage = useRef();
   const handlePrint = useReactToPrint({ content: () => printPage.current });
 
-  function handleGradeChange(event) { setGrade(event.target.value) }
 
+
+  function handleGradeChange(event) { setGrade(event.target.value) }
+  console.log(AnnualApprovalListData?.results?.[0]?.approvals[0]?.output_of_work)
   return (
     <Box
       sx={{ width: "70%", margin: "auto" }}
@@ -30,19 +44,14 @@ const AnnualAssessment = () => {
         <Box
           sx={{
             display: "flex",
-            justifyContent: "space-around",
+            justifyContent: "end",
             textDecoration: "underline ",
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            FOR OFFICERS IN PPG 03 & ABOVE
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            CONFIDENTIAL
-          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: "bold" }}>CONFIDENTIAL</Typography>
         </Box>
         <Box
-          sx={{ display: "flex", justifyContent: "center", marginTop: "75px" }}
+          sx={{ display: "flex", justifyContent: "center", marginTop: "35px" }}
         >
           <Typography variant="h5" sx={{ fontWeight: "bold" }}>
             PUNJAB LAND RECORDS AUTHORITY
@@ -51,7 +60,7 @@ const AnnualAssessment = () => {
         <Box
           sx={{ display: "flex", justifyContent: "center", marginTop: "35px" }}
         >
-          <img src={plraLogo} alt="plra logo" width="150px" height="150px" />
+          <img src={"/static/Logo.png"} alt="plra logo" width="150px" height="150px" />
         </Box>
         <Box
           sx={{ display: "flex", justifyContent: "center", marginTop: "35px" }}
@@ -64,7 +73,7 @@ const AnnualAssessment = () => {
           sx={{ display: "flex", justifyContent: "center", marginTop: "35px" }}
         >
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            FOR THE PERIOD DatePicker to DatePicker{" "}
+            FOR THE PERIOD {AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process?.year?.hr_celander_starting_date} To {AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process?.year?.hr_celander_ending_date}{" "}
           </Typography>
         </Box>
         <Box
@@ -84,23 +93,31 @@ const AnnualAssessment = () => {
 
         {/* Inputs */}
         <Box sx={{ display: "flex", flexDirection: "column", mt: 4, gap: 2 }}>
-          <BorderLessInput label="1. Name(in block letters)" />
-          <BorderLessInput label="2. S/o, D/o.(In block letters)" />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <Box style={{ width: "90%" }}>
-              <BorderLessInput label="3. Designation" width={"375px"} />
-            </Box>
-            <BorderLessInput label="CNIC No." width={"100px"} />
-          </Box>
-          <BorderLessInput label="4. Date of birthday" />
-          <BorderLessInput label="5. Date of joining in PLRA" />
-          <BorderLessInput label="6. Post held during the period" />
-          <BorderLessInput label="7. Academic qualifications" />
-          <BorderLessInput label="8. Period Served" />
-          <BorderLessInput label="(i). In present post" />
-          <BorderLessInput label="(ii). Under the reporting Officer" />
-        </Box>
+          <BorderLessInput
+            label="1. Name(in block letters)"
+            value={`${AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.first_name.toUpperCase()} ${AnnualApprovalListData?.results?.[0].approvals[0].aar_process.employee.last_name.toUpperCase()}`}
+          />
 
+          <BorderLessInput label="2. S/o, D/o.(In block letters)" value={`${AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.father_name.toUpperCase()}`} />
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <Grid container xs={12}>
+              <Grid item xs={8}>
+                <BorderLessInput label="3. Designation" inputWidth={"77%"} value={positiondata?.results?.[0]?.position_desc.charAt(0).toUpperCase() + positiondata?.results?.[0]?.position_desc.slice(1)} />
+              </Grid>
+              <Grid item xs={4}>
+                <BorderLessInput label=" CNIC No" width={"137px"} value={`${AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.cnic.charAt(0).toUpperCase()}${AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.cnic.slice(1)}`} />
+              </Grid>
+            </Grid>
+          </Box>
+
+          <BorderLessInput label="4. Date of birth" />
+          <BorderLessInput label="5. Date of joining in PLRA (PMU)" value={AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.date_of_joining.charAt(0).toUpperCase() + AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.date_of_joining.slice(1)} />
+          <BorderLessInput label="6. Post held during the period (with PPG)" value={positiondata?.results?.[0]?.position_desc.charAt(0).toUpperCase() + positiondata?.results?.[0]?.position_desc.slice(1) + " " + positiondata?.results?.[0]?.job?.ppg_level?.ppg_level.charAt(0).toUpperCase() + positiondata?.results?.[0]?.job?.ppg_level?.ppg_level.slice(1)} />
+          <BorderLessInput label="7. Academic qualifications" />
+          <BorderLessInput label="8. Period Served" value={AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.service_duration.charAt(0).toUpperCase() + AnnualApprovalListData?.results?.[0].approvals[0]?.aar_process.employee.service_duration.slice(1)} />
+          <BorderLessInput label="(i). In present post" value={positiondata?.results?.[0]?.position_desc.charAt(0).toUpperCase() + positiondata?.results?.[0]?.position_desc.slice(1)} />
+          <BorderLessInput label="(ii). Under the reporting Officer" value={`${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.first_name.charAt(0).toUpperCase()}${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.first_name.slice(1)} ${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.last_name.charAt(0).toUpperCase()}${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.last_name.slice(1)}`} />
+        </Box>
         <Box sx={{ display: "flex", justifyContent: "center", marginTop: "65px" }} className="print-page">
           <Typography variant="h5" fontWeight="bold">PART II</Typography>
         </Box>
@@ -125,8 +142,9 @@ const AnnualAssessment = () => {
             border: "1px solid black",
             padding: "10px",
             borderRadius: "6px",
+
           }}
-          placeholder="Write the job description..."
+          value={AnnualApprovalListData?.results?.[0].job_description}
         />
 
         <Box sx={{ display: "flex", marginTop: "35px" }}>
@@ -146,7 +164,7 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the job description..."
+          value={AnnualApprovalListData?.results?.[0].brief_achievements}
         />
 
         <Box
@@ -182,7 +200,7 @@ const AnnualAssessment = () => {
             borderRadius: "6px",
             resize: "none"
           }}
-          placeholder="Write the job description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.officer_performance}
         />
 
         <Box>
@@ -191,7 +209,7 @@ const AnnualAssessment = () => {
             borderRight: '1px solid black',
             borderLeft: '1px solid black', mt: 2
           }}>
-            <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}>No#</Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}>No.</Grid>
             <Grid item xs={5} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}></Grid>
             <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1, fontWeight: 600, }}><Box>A</Box></Grid>
             <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1, fontWeight: 600, }}><Box>B</Box></Grid>
@@ -209,10 +227,10 @@ const AnnualAssessment = () => {
               <Typography sx={{ fontWeight: "bold" }}>Quality of work</Typography>
               <Typography sx={{}}>Always produce work of exceptionally high Quality</Typography>
             </Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.quality_of_work === 'A'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.quality_of_work === 'B'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.quality_of_work === 'C'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.quality_of_work === 'D'} /></Box></Grid>
             <Grid item xs={2} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1 }}>
               <Typography sx={{}}>Generally produces work of poor quality.</Typography>
             </Grid>
@@ -225,13 +243,13 @@ const AnnualAssessment = () => {
           }}>
             <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', textAlign: 'left', p: 1 }} >2</Grid>
             <Grid item xs={5} sx={{ border: '1px solid black', textAlign: 'left', p: 1 }}>
-              <Typography sx={{ fontWeight: "bold" }}>Quality of work</Typography>
+              <Typography sx={{ fontWeight: "bold" }}>Output of work</Typography>
               <Typography sx={{}}>Always up-to-date; accumulates no Arrears</Typography>
             </Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.output_of_work === 'A'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.output_of_work === 'B'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.output_of_work === 'C'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.output_of_work === 'D'} /></Box></Grid>
             <Grid item xs={2} sx={{ border: '1px solid black', textAlign: 'left', p: 1 }}>
               <Typography sx={{}}>Always behind schedules very slow disposal.</Typography>
             </Grid>
@@ -246,7 +264,7 @@ const AnnualAssessment = () => {
             borderRight: '1px solid black',
             borderLeft: '1px solid black', mt: 2
           }}>
-            <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}>No#</Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}>No.</Grid>
             <Grid item xs={5} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}></Grid>
             <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1, fontWeight: 600, }}><Box>A</Box></Grid>
             <Grid item xs={1} sx={{ border: '1px solid black', textAlign: 'center', p: 1, fontWeight: 600, }}><Box>B</Box></Grid>
@@ -270,10 +288,10 @@ const AnnualAssessment = () => {
               <Typography sx={{ fontWeight: "bold" }}>a. General</Typography>
               <Typography sx={{}}>Irreprochable</Typography>
             </Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_general === 'A'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_general === 'B'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_general === 'c'} /></Box></Grid>
+            <Grid item xs={1} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_general === 'd'} /></Box></Grid>
             <Grid item xs={2} sx={{ border: '1px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1 }}>
               <Typography sx={{ textAlign: 'center' }}>Unscrupulous.</Typography>
             </Grid>
@@ -294,10 +312,10 @@ const AnnualAssessment = () => {
               <Typography sx={{ fontWeight: "bold" }}>b. Intellectual</Typography>
               <Typography sx={{}}>Honest & straightforwrward</Typography>
             </Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
-            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_intellectual === 'A'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_intellectual === 'B'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_intellectual === 'C'} /></Box></Grid>
+            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid black', p: 1, fontWeight: 600, }}><Box><input type="checkbox" checked={AnnualApprovalListData?.results?.[0]?.approvals[0]?.integrity_intellectual === 'D'} /></Box></Grid>
             <Grid item xs={2} sx={{ border: '1px solid black', textAlign: 'center', p: 1 }}>
               <Typography sx={{}}>Devious; Sycophant</Typography>
             </Grid>
@@ -325,7 +343,7 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.pen_picture_reporting_officer}
         />
 
         <Box sx={{ display: "flex", marginTop: "15px" }}>
@@ -344,7 +362,7 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.area_and_level_of_expertise}
         />
 
         <Box sx={{ display: "flex", marginTop: "15px" }}>
@@ -352,6 +370,7 @@ const AnnualAssessment = () => {
             5. Training and development needs.
           </Typography>
         </Box>
+
         <textarea
           rows={8}
           style={{
@@ -362,30 +381,13 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.training_and_development_need ? "Yes" : "No"}
+        />
+        <BorderLessInput
+          label="Overall Grading"
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.overall_grading.charAt(0).toUpperCase() + AnnualApprovalListData?.results?.[0].approvals[0]?.overall_grading.slice(1)}
         />
 
-        <Box sx={{ display: "flex", marginTop: "15px" }}>
-          <Typography sx={{ fontWeight: "bold" }}>
-            6. Overall grading
-          </Typography>
-        </Box>
-        <Select
-          labelId="grade"
-          id="grade"
-          value={Grade}
-          label="Grade"
-          onChange={handleGradeChange}
-          sx={{ width: "20%", marginTop: "10px" }}
-        >
-          <MenuItem value="none">
-            <em>None</em>
-          </MenuItem>
-          <MenuItem value="Very Good">Very Good</MenuItem>
-          <MenuItem value="Good">Good</MenuItem>
-          <MenuItem value="Average">Average</MenuItem>
-          <MenuItem value="Below Average">Below Average</MenuItem>
-        </Select>
 
         <Box sx={{ display: "flex", marginTop: "15px" }}>
           <Typography sx={{ fontWeight: "bold" }}>
@@ -402,7 +404,7 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[0]?.fitness_for_retention}
         />
 
         <Box
@@ -417,6 +419,8 @@ const AnnualAssessment = () => {
             <BorderLessInput
               label="Name of the reporting officer"
               width={"375px"}
+              value={`${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.first_name} ${AnnualApprovalListData?.results?.[0].approvals[0]?.approving_authority?.last_name}`}
+
             />
           </Box>
           <BorderLessInput label="Signature" width={"100px"} />
@@ -430,7 +434,7 @@ const AnnualAssessment = () => {
           }}
         >
           <Box style={{ width: "90%" }}>
-            <BorderLessInput label="Designation" width={"375px"} />
+            <BorderLessInput label="Designation" width={"375px"} value={AnnualApprovalListData?.results?.[0].approvals[0]?.designation} />
           </Box>
           <BorderLessInput label="Date" width={"100px"} />
         </Box>
@@ -452,26 +456,14 @@ const AnnualAssessment = () => {
         </Box>
 
         <Box sx={{ display: "flex", marginTop: "35px" }}>
-          <Typography sx={{ fontWeight: "bold" }}>
-            1. How often have you seen the urork ot the officer reported upon?
+          <Typography sx={{ fontWeight: "bold", width: "500px" }}>
+            1. How often have you seen the work of the officer reported upon?
           </Typography>
+          <BorderLessInput
+            label="" value={AnnualApprovalListData?.results?.[0].approvals[1]?.frequency_of_work}
+          />
         </Box>
-        <Select
-          labelId="grade"
-          id="grade"
-          value={Grade}
-          label="Grade"
-          onChange={handleGradeChange}
-          sx={{ width: "20%", marginTop: "10px" }}
-        >
-          <MenuItem value="none">
-            <em>None</em>
-          </MenuItem>
-          <MenuItem value="Very Good">Very Good</MenuItem>
-          <MenuItem value="Good">Good</MenuItem>
-          <MenuItem value="Average">Average</MenuItem>
-          <MenuItem value="Below Average">Below Average</MenuItem>
-        </Select>
+
 
         <Box sx={{ display: "flex", marginTop: "35px" }}>
           <Typography sx={{ fontWeight: "bold" }}>
@@ -489,61 +481,44 @@ const AnnualAssessment = () => {
             padding: "10px",
             borderRadius: "6px",
           }}
-          placeholder="Write the description..."
+          value={AnnualApprovalListData?.results?.[0].approvals[1]?.know_the_officer}
         />
+        <Box sx={{ display: "flex", marginTop: "35px" }}>
+          <Typography sx={{ fontWeight: "bold" }}>
+            3.  Overall Grading
+          </Typography>
+        <BorderLessInput
+          value={AnnualApprovalListData?.results?.[0].approvals[1]?.over_All_grading?.percentile_range.charAt(0).toUpperCase() + AnnualApprovalListData?.results?.[0].approvals[1]?.over_All_grading?.percentile_range.slice(1)}
+        />
+        </Box>
+
 
         <Box sx={{ display: "flex", marginTop: "35px" }}>
           <Typography sx={{ fontWeight: "bold" }}>
-            3. Overall grading
+            4. Recommendation for retention / extension in contract:
           </Typography>
         </Box>
-
-        <Select
-          labelId="grade"
-          id="grade"
-          value={Grade}
-          label="Grade"
-          onChange={handleGradeChange}
-          sx={{ width: "20%", marginTop: "10px" }}
-        >
-          <MenuItem value="none">
-            <em>None</em>
-          </MenuItem>
-          <MenuItem value="Very Good">Very Good</MenuItem>
-          <MenuItem value="Good">Good</MenuItem>
-          <MenuItem value="Average">Average</MenuItem>
-          <MenuItem value="Below Average">Below Average</MenuItem>
-        </Select>
-
-        <Box sx={{ display: "flex", flexDirection: "column", mt: 4, gap: 2 }}>
-          <BorderLessInput
-            label="4. Recommendation for retention / extension in contract:"
-            width="80%"
-          />
-        </Box>
-
+        <textarea
+          rows={8}
+          style={{
+            resize: "none",
+            width: "100%",
+            marginTop: "15px",
+            border: "1px solid black",
+            padding: "10px",
+            borderRadius: "6px",
+          }}
+          value={AnnualApprovalListData?.results?.[0].approvals[1]?.recommendation_for_retention}
+        />
         <Box sx={{ display: "flex", marginTop: "35px" }}>
-          <Typography sx={{ fontWeight: "bold" }}>
+          <Typography sx={{ fontWeight: "bold", width: "650px" }}>
             5. Evaluation of the quality of assessment made by the reporting officer
           </Typography>
+
+          <BorderLessInput
+            value={AnnualApprovalListData?.results?.[0].approvals[1]?.quality_of_assessment.toUpperCase()}
+          />
         </Box>
-
-        <Select
-          labelId="grade"
-          id="grade"
-          value={Grade}
-          label="Grade"
-          onChange={handleGradeChange}
-          sx={{ width: "20%", marginTop: "10px" }}
-        >
-          <MenuItem value="none">
-            <em>None</em>
-          </MenuItem>
-          <MenuItem value="Exaggerated">Exaggerated</MenuItem>
-          <MenuItem value="Fair">Fair</MenuItem>
-          <MenuItem value="Biased">Biased</MenuItem>
-        </Select>
-
         <Box
           sx={{
             display: "flex",
@@ -554,8 +529,8 @@ const AnnualAssessment = () => {
         >
           <Box style={{ width: "90%" }}>
             <BorderLessInput
-              label="Name of the reporting officer"
-              width={"375px"}
+              label="Name of the Countersigning Officer "
+              width={"500px"} value={`${AnnualApprovalListData?.results?.[0].approvals[1]?.approving_authority?.first_name} ${AnnualApprovalListData?.results?.[0].approvals[1]?.approving_authority?.last_name}`}
             />
           </Box>
           <BorderLessInput label="Signature" width={"100px"} />
@@ -569,7 +544,7 @@ const AnnualAssessment = () => {
           }}
         >
           <Box style={{ width: "90%" }}>
-            <BorderLessInput label="Designation" width={"375px"} />
+            <BorderLessInput label="Designation" width={"500px"} value={AnnualApprovalListData?.results?.[0].approvals[1]?.designation} />
           </Box>
           <BorderLessInput label="Date" width={"100px"} />
         </Box>

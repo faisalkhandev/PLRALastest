@@ -9,11 +9,13 @@ class BaseSerializer(serializers.ModelSerializer):
         except KeyError:
             raise serializers.ValidationError(f"{model_name} is not a valid model name.")
         instance = model(**validated_data)
+        instance.clean()
         instance.save()
         return instance
     def update(self, instance, validated_data):
         for key, value in validated_data.items():
             setattr(instance, key, value)
+        instance.clean()
         instance.save()
         return instance
 class CitiesSerializer(BaseSerializer):

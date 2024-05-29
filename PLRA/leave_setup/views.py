@@ -19,47 +19,65 @@ class LeaveBalancesAPIView(generics.ListAPIView):
     serializer_class = LeaveBalancesSerializer
 
     def get_queryset(self):
+        self.request.get_full_path()
         employee_id = self.kwargs['employee_id']  # Assuming you pass the employee_id in the URL
         employee = Employee.objects.get(pk=employee_id)
+        personal_information=PersonalInformation.objects.filter(employee=employee).first()
 
-        leave_types_list = LeaveType.objects.all()
+        leave_types_list=None
+        if personal_information:
+            gender=personal_information.gender
+            if gender=='male':
+                leave_types_list = LeaveType.objects.filter(gender_eligibility__in=['All', 'Male']).exclude(leave_type="Absent")
+            elif gender=='female':
+                leave_types_list = LeaveType.objects.filter(gender_eligibility__in=['All', 'Female']).exclude(leave_type="Absent")
+            elif gender=='other':     
+                leave_types_list = LeaveType.objects.filter().exclude(leave_type="Absent")
+            elif gender is None:     
+                leave_types_list = LeaveType.objects.filter().exclude(leave_type="Absent")
+        else:
+            leave_types_list = LeaveType.objects.filter().exclude(leave_type="Absent")
         leave_balances = []
         non_dependable_detail=[]
         dependable_bucket=[]
         for leavetype in leave_types_list:
-            non_dependable = LeaveNonDependableDetail.objects.filter(
+            if leavetype.accrue :
+                dependable = LeaveDependableBucket.objects.filter(
+                employee=employee,
+                leave_type=leavetype
+                ).order_by('-leave_date').first()
+                if not dependable:
+                    related_accrue_record=AccrueTable.objects.filter(leave_bucket=leavetype,employee=employee).order_by('-month').first()
+                    if related_accrue_record:
+                        dependable= {
+                            "leave_deduction_bucket_allowed": related_accrue_record.accrued_leaves,
+                            "leave_type":leavetype,
+                            "leave_deduction_bucket": leavetype,
+                            "leave_deduction_used": 0,
+                            "leave_type_used": 0,
+                            "leave_deduction_running_balance": 0,
+                            "employee": employee
+                        }
+                if dependable:
+                    dependable_bucket.append(dependable)
+            elif  leavetype.entire_service_validity or not leavetype.accrue:
+                non_dependable = LeaveNonDependableDetail.objects.filter(
                 employee=employee,
                 leave_type=leavetype
             ).order_by('-leave_to_date').first()
-            if not leavetype.accrue and not non_dependable:
-                 non_dependable={
-                    "leave_type_allowed":leavetype.entire_service_limit,
-                    "leave_type_used": 0,
-                    "leave_type_remaining": leavetype.entire_service_limit,
-                    "employee": employee,
-                    "leave_type": leavetype
-                }
-                 
-            if non_dependable:
-                non_dependable_detail.append(non_dependable)
-            dependable = LeaveDependableBucket.objects.filter(
-                employee=employee,
-                leave_type=leavetype
-            ).order_by('-leave_date').first()
-            if  leavetype.accrue and not dependable:
-                related_accrue_record=AccrueTable.objects.filter(leave_bucket=leavetype,employee=employee).order_by('-month').first()
-                if related_accrue_record:
-                    dependable= {
-                        "leave_deduction_bucket_allowed": related_accrue_record.accrued_leaves,
-                        "leave_type":leavetype,
-                        "leave_deduction_bucket": leavetype,
-                        "leave_deduction_used": 0,
+
+                if not non_dependable:
+                    non_dependable={
+                        "leave_type_allowed":leavetype.entire_service_limit,
                         "leave_type_used": 0,
-                        "leave_deduction_running_balance": 0,
-                        "employee": employee
+                        "leave_type_remaining": leavetype.entire_service_limit,
+                        "employee": employee,
+                        "leave_type": leavetype
                     }
-            if dependable:
-                dependable_bucket.append(dependable)
+                 
+                    if non_dependable:
+                        non_dependable_detail.append(non_dependable)
+            
 
         leave_balances.append({'employee_id': employee, 'leave_non_dependable_balance': non_dependable_detail, 'leave_dependable_balance': dependable_bucket})
         return leave_balances
@@ -115,11 +133,11 @@ class LeaveTypeAPI(BaseAPIViewSet):
     
 
     
-class LeaveCountAPI(BaseAPIViewSet):
+class LeaveCountAPI(viewsets.ModelViewSet):
     queryset = LeaveCount.objects.all()
     serializer_class = LeaveCountSerializer
 
-class LeaveApprovalsAPI(BaseAPIViewSet):
+class LeaveApprovalsAPI(viewsets.ModelViewSet):
     queryset = LeaveApprovals.objects.all()
     serializer_class = LeaveApprovalsSerializer
     def get_serializer_class(self):
@@ -145,3 +163,22 @@ class SuperApprovalsAPI(BaseAPIViewSet):
 
 
 
+class LeaveShowApplyTimeApi(generics.ListAPIView):
+    serializer_class=LeaveTypeSerializer
+    def get_queryset(self):
+        employee=self.request.user
+        personal_information=PersonalInformation.objects.filter(employee=employee).first()
+
+        leave_types_list=None
+        if personal_information:
+            gender=personal_information.gender
+            if gender=='male':
+                leave_types_list = LeaveType.objects.filter(gender_eligibility__in=['All', 'Male'],visible_at_leave_apply_time=True)
+            elif gender=='female':
+                leave_types_list = LeaveType.objects.filter(gender_eligibility__in=['All', 'Female'],visible_at_leave_apply_time=True)
+            elif gender=='other':     
+                leave_types_list = LeaveType.objects.filter(gender_eligibility='All',visible_at_leave_apply_time=True)
+        else:
+            leave_types_list = LeaveType.objects.filter(visible_at_leave_apply_time=True)
+        return leave_types_list
+    

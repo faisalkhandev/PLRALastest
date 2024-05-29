@@ -3,7 +3,7 @@ from .models import *
 # Register your models here.
 @admin.register(InquiryOutcomes)
 class InquiryOutcomesAdmin(admin.ModelAdmin):
-    list_display = ['inquiry_type', 'inquiry_description']
+    list_display = ['inquiry_name', 'inquiry_description']
 
 @admin.register(InquiryType)
 class InquiryTypeAdmin(admin.ModelAdmin):
@@ -11,8 +11,8 @@ class InquiryTypeAdmin(admin.ModelAdmin):
 
 @admin.register(DisciplinaryProceedingRequest)
 class DisciplinaryProceedingRequestAdmin(admin.ModelAdmin):
-    list_display = ['employee', 'inquiry_reason', 'prob_officer', 'regular_inquiry_officer', 'inquiry_start_date', 'inquiry_status', 'allegation_status']
-    list_filter = ['inquiry_status', 'allegation_status']
+    list_display = ['employee', 'inquiry_reason', 'prob_officer', 'regular_inquiry_officer', 'inquiry_start_date', 'inquiry_status', 'inquiry_type']
+    list_filter = ['inquiry_status', 'inquiry_type']
     search_fields = ['employee__first_name', 'employee__last_name']
 
 @admin.register(ProbeOfficerApproval)
@@ -25,11 +25,6 @@ class DGApprovalFirstAdmin(admin.ModelAdmin):
     list_display = ['disciplinary_proceeding_request', 'approving_authority', 'probe_allegation_status', 'probe_allegation_date']
     list_filter = ['probe_allegation_status']
 
-
-@admin.register(DGApproval)
-class DGApprovalAdmin(admin.ModelAdmin):
-    list_display = ['disciplinary_proceeding_request', 'approving_authority', 'status', 'issuance_of_final_order_date', 'attachment_of_final_order', 'inquiry_outcome', 'inquiry_type']
-    list_filter = ['status']
 @admin.register(RegularInquiryOfficerApproval)
 class RegularInquiryOfficerApprovalAdmin(admin.ModelAdmin):
     list_display = ['disciplinary_proceeding_request', 'approving_authority', 'status', 'issuance_of_inquiry_order_date', 'issuance_of_inquiry_report_date']

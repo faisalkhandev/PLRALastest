@@ -1,18 +1,20 @@
 import React, { useState, useCallback, Fragment, useMemo } from "react";
-import { Typography, Box, Grid, Dialog } from "@mui/material";
+import { Typography, Box, Grid } from "@mui/material";
 import { useTheme } from "@emotion/react";
-import { Warning } from '../../../Assets/Icons';
 import { Btn, InputField } from "../../../Components/index";
 import {
   useGetDistrictQuery, usePostDistrictMutation, useUpdateDistrictMutation,
   useGetDivisionQuery, useDeleteDistrictMutation
 } from '../../../Features/API/API'
-import { MyTableContainer, Multi_Dropdown, Loader, ErrorHandler } from '../../../Components/index';
+import { MyTableContainer, Multi_Dropdown, Loader, ErrorHandler, DialogBox } from '../../../Components/index';
 import "../../Styles.css"
-import { toast } from 'react-toastify'
+import { showToast } from '../../../Components/Common/ToastCard'
+import StatusCodeHandler from "../../../Components/Common/StatusCodeHandler";
 
 const District = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
+
 
   // States
   const [formData, setFormData] = useState({
@@ -34,6 +36,7 @@ const District = () => {
 
   // Callbacks
   const resetForm = useCallback(() => {
+    setFormErrors({});
     setFormData({ district_id: '', district_name: '', division: '' });
     setDivisionData('');
     setIsRowSelected(false);
@@ -48,20 +51,15 @@ const District = () => {
   const handleDelete = useCallback(async () => {
     try {
       const res = await deleteDistrict({ selectRowID });
-      if (res.error) {
-        if (res.error.status === 500) {
-          return toast.error("Server is not working", { position: "top-center", autoClose: 3000 });
-        } else if (res.error.status === 409) {
-          return toast.error("Record deletion failed due to linking.", { position: "top-center", autoClose: 3000 });
-        } else {
-          return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 });
-        }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      toast.success("District deleted.", { position: "top-center", autoClose: 3000 });
+      showToast(`Record Deleted Successfully`, "success");
       resetForm();
       refetch();
     } catch (err) {
-      console.error('Error deleting District:', err);
+      return showToast(`${err.message}`, "error");
     }
   }, [deleteDistrict, selectRowID, resetForm, refetch]);
 
@@ -69,7 +67,7 @@ const District = () => {
     if (isRowSelected) {
       setDeleteDialog(true);
     } else {
-      toast.error("Record not selected.", { position: "top-center", autoClose: 3000 });
+      return showToast('Record not Selected', 'error');
     }
   }, [isRowSelected]);
 
@@ -95,48 +93,44 @@ const District = () => {
 
   const handleSaveData = useCallback(async (e) => {
     e.preventDefault();
-    if (formData.district_id === '' || formData.district_name === '' || formData.division === '') {
-      toast.error(`Mandatory fields should not be empty.`, { position: "top-center", autoClose: 3000 });
-    } else {
-      try {
-        const res = await postDistrict(formData);
-        if (res.error) {
-          if (res.error.status === 400) {
-            toast.error("ID already exists.", { position: "top-center", autoClose: 3000 });
-          } else {
-            toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 });
-          }
-        } else {
-          toast.success("Data created successfully.", { position: "top-center", autoClose: 3000 });
-          resetForm();
-          refetch();
+    try {
+      const res = await postDistrict(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-      } catch (err) {
-        console.error('Error creating District:', err);
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record created Successfully`, "success");
+      resetForm();
+      refetch();
+    } catch (err) {
+      showToast(`${err.message}`, "error");
     }
   }, [formData, postDistrict, resetForm, refetch]);
 
   const handleUpdateData = useCallback(async () => {
     try {
       const res = await updateDistrict({ selectRowID, updateDistrictData: formData });
-      if (res.error) {
-        if (res.error.status === 400) {
-          toast.error("ID already exists.", { position: "top-center", autoClose: 3000 });
-        } else if (res.error.status === 500) {
-          toast.error("Server is not working", { position: "top-center", autoClose: 3000 });
-        } else if (res.error.status === 409) {
-          toast.error("Record updation failed due to linking.", { position: "top-center", autoClose: 3000 });
-        } else {
-          toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 });
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-      } else {
-        toast.success("Data updated successfully.", { position: "top-center", autoClose: 3000 });
-        resetForm();
-        refetch();
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record updated Successfully`, "success");
+      resetForm();
+      refetch();
     } catch (err) {
-      console.error('Error updating District:', err);
+      showToast(`${err.message}`, "error");
     }
   }, [updateDistrict, selectRowID, formData, resetForm, refetch]);
 
@@ -147,26 +141,43 @@ const District = () => {
       headerName: 'District ID',
       minWidth: 200,
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
+        const onView = () => { handleRowClick(params) };
         return (
-          <span onClick={onView} className='table_first_column' style={{ color: "#379237", textDecoration: 'underline' }}>  {params.value} </span>
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
         );
       },
     },
-    { field: 'district_name', headerName: 'District', minWidth: 200 },
+    {
+      field: 'district_name', headerName: 'District', minWidth: 200, renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
     {
       field: 'division',
       headerName: 'Division',
       minWidth: 200,
-      renderCell: (params) => <span > {params.row.division.division_name}</span>,
+      valueGetter: (params) => params.row?.division?.division_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
     },
     {
       field: 'region_name',
       headerName: 'Region',
       minWidth: 200,
       valueGetter: (params) => params.row?.division?.region?.region_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
     },
   ], [handleRowClick]);
 
@@ -196,29 +207,49 @@ const District = () => {
   ], []);
 
   return (
-    <Fragment>
+    <Box sx={{ width: "100%" }}>
       <Box sx={{ width: "100%", display: "flex", mb: 3, gap: 2, alignItems: 'center' }}>
         <Typography variant='h4' sx={{ width: '100%', color: theme.palette.primary.main, fontWeight: '500', fontSize: '20px' }}>District</Typography>
         <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end', marginRight: 1 }} />
         <Btn onClick={isRowSelected ? () => setDistrictDialog(true) : handleSaveData} type="save" />
+        {
+          districtDialog ?
+            <DialogBox
+              open={districtDialog}
+              onClose={() => setDistrictDialog(false)}
+              closeClick={() => setDistrictDialog(false)}
+              sureClick={() => { handleUpdateData(); setDistrictDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type="delete" onClick={handleDeleteDialog} />
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setDeleteDialog(false)}
+              closeClick={() => setDeleteDialog(false)}
+              sureClick={() => { handleDelete(); setDeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
 
       <form action="">
         <Grid container columnSpacing={8} spacing={{ xs: 1, md: 1 }} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <InputField name="district_id" label="District ID" placeholder="Enter District ID" value={formData.district_id} type="text" onChange={handleChange} mandatory InputState={isRowSelected ? true : false} />
+            <InputField name="district_id" label="District ID" placeholder="Enter District ID" value={formData.district_id} type="text" onChange={handleChange} mandatory InputState={isRowSelected ? true : false} error={formErrors?.data?.district_id} />
             {divisionDataApi && divisionDataApi.results ?
               <div>
-                <InputField name="division" label="Division " placeholder="Select Division" value={divisionData || ''} type="text" isShowIcon={true} onClick={() => setDivisionDialog(true)} mandatory />
+                <InputField name="division" label="Division " placeholder="Select Division" value={divisionData || ''} type="text" isShowIcon={true} onClick={() => setDivisionDialog(true)} mandatory error={formErrors?.data?.division} />
                 <Multi_Dropdown RowFilterWith={"d_rec_id"} onClose={() => setDivisionDialog(false)} isOpen={divisionDialog} tableHeader={divisionHeader} tableRows={divisionDataApi.results} onSelect={divisionClickHandler} MinimumWidth={"500px"} />
               </div>
               :
-              <InputField name="division" label="Division " placeholder="Select Division" value={divisionData || ''} type="text" isShowIcon={true} onClick={() => setDivisionDialog(true)} />
-            } 
+              <InputField name="division" label="Division " placeholder="Select Division" value={divisionData || ''} type="text" isShowIcon={true} onClick={() => setDivisionDialog(true)} error={formErrors?.data?.division} />
+            }
           </Grid>
           <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <InputField name="district_name" label="District" placeholder="Enter District Name" type="text" value={formData.district_name} onChange={handleChange} mandatory />
+            <InputField name="district_name" label="District" placeholder="Enter District Name" type="text" value={formData.district_name} onChange={handleChange} mandatory error={formErrors?.data?.district_name} />
           </Grid>
         </Grid>
       </form>
@@ -237,33 +268,14 @@ const District = () => {
                   customPageSize={10}
                   RowFilterWith="district_rec_id"
                   onRowClick={handleRowClick}
-                  minHeight={'calc(100vh - 370px)'}
+                  minHeight={'calc(100vh - 384px)'}
                 />
               ) : null
             )}
         </>
       )}
-
-      <Dialog open={districtDialog} onClose={() => setDistrictDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '350px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center' }}><Warning />Do you want to update your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleUpdateData(); setDistrictDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setDistrictDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '350px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center' }}><Warning />Do you want to delete your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleDelete(); setDeleteDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setDeleteDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-    </Fragment>
-  )
-}
+    </Box>
+  );
+};
 
 export default District;

@@ -8,7 +8,8 @@ export default function Drawar_Tabbar() {
   const [value, setValue] = React.useState(0);
   const handleChange = (event, newValue) => {
     setValue(newValue);
-  };
+  }; 
+  
 
   return (
     <Box sx={{ width: "100%", borderRadius: "8px", marginLeft: "25px" }}>

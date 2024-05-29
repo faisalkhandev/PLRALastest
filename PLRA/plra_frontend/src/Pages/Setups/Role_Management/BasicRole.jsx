@@ -20,9 +20,9 @@ const advanceRoles = [
 
 const roles = [
   { id: '1', name: 'Add' },
-  { id: '2', name: 'View' },
-  { id: '3', name: 'Update' },
-  { id: '4', name: 'Delete' },
+  { id: '2', name: 'Update' },
+  { id: '3', name: 'Delete' },
+  { id: '4', name: 'View' },
 ];
 
 const BasicRole = () => {
@@ -36,7 +36,7 @@ const BasicRole = () => {
   const [csrfToken, setCsrfToken] = useState('');
   
   useEffect(() => {
-    const authToken = sessionStorage.getItem("authToken");
+    const authToken = Cookies.get("authToken");
     const csrfT = Cookies.get('csrftoken');
     setAccessToken(authToken);
     setCsrfToken(csrfT)
@@ -176,13 +176,12 @@ const BasicRole = () => {
                               </Grid>
                             ))}
                          {/* Child Accordion */}
-                         {record.advanced_permissions.length > 0 && (
+                         {/* {record.advanced_permissions.length > 0 && (
                               <Accordion style={{ boxShadow: 'none', backgroundColor: 'rgb(197 197 197 / 11%)', borderRadius: '10px', width: '180%', margin: '10px' }} >
                                 <AccordionSummary expandIcon={<DownArrow />} aria-controls={`${category}-child-content`} id={`${category}-child-header`}>
                                   <Typography variant="h6">Advance Permission for {record.model_name}</Typography>
                                 </AccordionSummary>
                                 <AccordionDetails>
- 
                                   <Grid container sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: '35px' }}>
                                     <Grid item sx={{ display: 'inline-block', width: "calc(100% - 150px)" }}>
                                       <Typography sx={{ mt: '5px', fontWeight: 'bold' }}>Role Type</Typography>
@@ -215,7 +214,7 @@ const BasicRole = () => {
                                   </Box>
                                 </AccordionDetails>
                               </Accordion>
-                            )}
+                            )} */}
                           </Grid>
                         ))}
                       </Box>

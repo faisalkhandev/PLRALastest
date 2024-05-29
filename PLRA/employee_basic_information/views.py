@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.db.models import ProtectedError
 from django.views.decorators.http import require_http_methods
+from rest_framework.views import exception_handler
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from django.contrib.auth import get_user_model
 from .serializers import PositionSerializer,LoginSerializers,UserSerializers,OtpSerializer
@@ -9,10 +10,11 @@ from rest_framework.generics import ListCreateAPIView,RetrieveUpdateDestroyAPIVi
 from rest_framework import status, permissions
 from django.contrib.auth import authenticate, login
 from rest_framework.permissions import IsAuthenticated,DjangoModelPermissionsOrAnonReadOnly
-import json
+from django.db.models.deletion import Collector
 from rest_framework.decorators import throttle_classes
 from django.apps import apps
 # from rest_framework.throttling import AnonRateThrottle
+from disciplinary_proceedings_setup.models import DisciplinaryProceedingRequest
 from django.contrib.admin.models import LogEntry
 from rest_framework.views import APIView
 from django.db.models import Q
@@ -35,6 +37,15 @@ from rest_framework import generics,viewsets
 from .models import *
 from .serializers import *
 from notifications.models import Notification
+from leave_setup.models import LeaveApply
+from termination.models import TerminationRequest
+from resignation.models import ResignationRequest
+from elevation.models import PendingElevation
+from progression.models import PendingProgression
+from simple_transfer_Setup.models import Transfer_Process
+from annual_assessment_setup.models import AARProcess
+from transfer_setup.models import E_Transfer_Process
+from noc.models import NocProcess
 # Create your views here.
 class BaseAPIViewSet(viewsets.ModelViewSet):
     
@@ -42,9 +53,21 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
     ordering_fields = "__all__"
     pagination_class = LimitOffsetPagination
     permission_classes = [BasePermissions]
-    # authentication_classes= [TokenAuthentication]
+    authentication_classes= [TokenAuthentication]
     search_fields ='__all__'
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
+        # Check if 'limit' and 'offset' parameters are present in the request
+        if 'limit' in request.query_params or 'offset' in request.query_params:
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+        # If 'limit' and 'offset' are not present, return all results in a "results" array
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'results': serializer.data})
     def get_queryset(self):
         queryset = super().get_queryset()
         model = self.serializer_class.Meta.model
@@ -63,6 +86,15 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
                                     self.filterset_fields[f'{field.name}__{related_field.name}'] = ['iexact', 'startswith', 'contains']
                                 elif isinstance(related_field, (models.IntegerField, models.FloatField, models.DecimalField, models.DateField, models.DateTimeField)):
                                     self.filterset_fields[f'{field.name}__{related_field.name}'] = ['exact', 'lte', 'gte', 'range']
+                                if isinstance(field, models.ForeignKey):
+                                        related_model = field.related_model
+                                        if related_model:
+                                            related_fields = related_model._meta.fields
+                                            for related_field in related_fields:
+                                                if isinstance(related_field, (models.CharField, models.TextField,models.BooleanField)):
+                                                    self.filterset_fields[f'{field.name}__{related_field.name}'] = ['iexact', 'startswith', 'contains']
+                                                elif isinstance(related_field, (models.IntegerField, models.FloatField, models.DecimalField, models.DateField, models.DateTimeField)):
+                                                    self.filterset_fields[f'{field.name}__{related_field.name}'] = ['exact', 'lte', 'gte', 'range']
                     else:
                         if isinstance(field, (models.CharField, models.TextField)):
                             self.filterset_fields[field.name] = ['iexact', 'startswith', 'contains']
@@ -71,7 +103,6 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
         
         return queryset
     def is_instance_associated(self, instance):
-        from django.db.models.deletion import Collector
         using = instance._state.db  # Get the database alias associated with the instance
         collector = Collector(using=using)
         try:
@@ -80,39 +111,52 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
             return False
         except Exception as e:
             return True
+
+    def handle_exception(self, exc):
+        """
+        Handle an exception and return a custom response if it is not handled by the default handler.
+        For ValidationError, customize the response with a specific code.
+        For AssertionError, return a custom response indicating an internal server error.
+        """
+        if isinstance(exc, ValidationError):
+            # Customize the response for ValidationError with a specific code.
+            return Response({'detail': exc, 'code': 'VALIDATION_ERROR'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        elif isinstance(exc, AssertionError):
+            # Customize the response for AssertionError.
+            return Response({'detail': exc, 'code': 'ASSERTION_ERROR'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        response = super().handle_exception(exc)
+        return response
+          # Return the default response if no custom handling is required
             
-    @method_decorator(csrf_exempt)
-    def update(self, request, *args, **kwargs):
-            instance = self.get_object()
-            print('executed')
-            if self.is_instance_associated(instance):
-                return Response(
-                    {"error": "Cannot update this instance as it is associated with another instance."},
-                    status=status.HTTP_409_CONFLICT
-                )
+    # @method_decorator(csrf_exempt)
+    # def update(self, request, *args, **kwargs):
+    #         instance = self.get_object()
+    #         print('executed')
+    #         if self.is_instance_associated(instance):
+    #             return Response(
+    #                 {"error": "Cannot update this instance as it is associated with another instance."},
+    #                 status=status.HTTP_409_CONFLICT
+    #             )
        
-            return super().update(request, *args, **kwargs)
+    #         return super().update(request, *args, **kwargs)
     @method_decorator(csrf_exempt)
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         model = self.serializer_class.Meta.model
- 
+
         try:
             instance.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ProtectedError as e:
-            model_name = model._meta.verbose_name
+            model_name = model._meta.verbose_name.title()
             protected_objects_list = list(e.protected_objects)
-            related_model_name = protected_objects_list[0]._meta.verbose_name if protected_objects_list else ''
-            related_objects_names = ', '.join(str(obj) for obj in protected_objects_list)
-            error_message = (
-                f"Cannot delete this {model_name} because it is referenced by some {related_model_name}(s): {related_objects_names}."
-            )
+            related_model_name = protected_objects_list[0]._meta.verbose_name.title() if protected_objects_list else 'related item(s)'
+            error_message = f"Deletion failed. {model_name} is linked to {related_model_name}."
             return Response(data={"error": error_message}, status=status.HTTP_409_CONFLICT)
         except TypeError as e:
-            error_message = str(e)
+            error_message = "An error occurred: " + str(e)
             return Response(data={"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
-   
+    
 
     class Meta:
         abstract = True
@@ -273,6 +317,7 @@ def otpApi(request):
         # Set user ID in the frontend cookie
         response = Response(data={"Authorization": token.key, "user": user.data}, status=status.HTTP_200_OK)
         response.set_cookie('user_id', userCache.id)  # Assuming user ID is an integer
+        response.set_cookie('authToken', token.key)  # Assuming user ID is an integer
  
         return response
  
@@ -298,14 +343,38 @@ class Positionapi(BaseAPIViewSet):
     
    #this is django user api
 
+import logging
+
+# Configure logger
+logger = logging.getLogger(__name__)
+
 class UserAPI(BaseAPIViewSet):
     
     queryset = User.objects.all()
     serializer_class = UserSerializers
+    
     def get_serializer_class(self):
         if self.action == 'list' or self.action == 'retrieve':
             return User_list_Serializers
         return super().get_serializer_class()
+
+    def update(self, request, *args, **kwargs):
+        # Create a mutable copy of the request data
+        mutable_request_data = request.data.copy()
+
+        # If 'groups' is not present in request data, append an empty list
+        if 'groups' not in mutable_request_data:
+            mutable_request_data.setlist('groups', [])
+
+        # Print the updated request data
+        # print("Request data:", mutable_request_data)
+
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=mutable_request_data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+   
     # def list(self, request):
     #     queryset = User.objects.all()
     #     page = self.paginate_queryset(queryset)
@@ -331,51 +400,51 @@ class ModelListView(generics.ListAPIView):
         user = User.objects.get(cnic=self.request.user.cnic)
         models = ContentType.objects.exclude(app_label__in=["authtoken", "admin", "contenttypes", "sessions"]).exclude(model__in=["permission"]).all()
         data = {}
- 
+
         for model in models:
+            model_class = model.model_class()
+            if model_class is None:
+                continue  # Skip content types without an associated model
+
             if user.has_perm(f'{model.app_label}.view_{model.model}'):
                 permissions = []
                 advanced_permissions = []
-                field_permissions={}
-               
+                field_permissions = {}
+
                 for perm in Permission.objects.filter(content_type=model):
                     if user.has_perm(f'{model.app_label}.{perm.codename}'):
                         if any(word in perm.codename for word in ['can_view', 'can_add', 'can_change']):
                             field_name = perm.name.replace("Can ", "").replace("_", " ").upper()
                             permission_data = {
                                 'id': perm.id,
-                                'name': perm.name.replace("Can ", "").replace("_", " ").upper()
+                                'name': field_name
                             }
 
-                            # Extract the common part of the field_name
                             common_part = field_name.replace("ADD", "").replace("VIEW", "").replace("CHANGE", "")
-
-                            # Check if the common_part is already in the dictionary
                             if common_part in field_permissions:
-                                # Append permission_data to the existing list
                                 field_permissions[common_part].append(permission_data)
                             else:
-                # Create a new entry with a list containing permission_data
                                 field_permissions[common_part] = [permission_data]
-                            advanced_permissions = [{ key.replace("ADD","").replace("VIEW","").replace("CHANGE",""): value} for key, value in field_permissions.items()]
+                            advanced_permissions = [{key.replace("ADD", "").replace("VIEW", "").replace("CHANGE", ""): value} for key, value in field_permissions.items()]
                         else:
                             permissions.append({
                                 'id': perm.id,
-                                'name': perm.codename.split('_', 1)[0].title() 
+                                'name': perm.codename.split('_', 1)[0].title()
                             })
-                
-                app_label_name = model.model_class()._meta.app_label
+
+                app_label_name = model_class._meta.app_label
                 app_name = str(apps.get_app_config(app_label_name).verbose_name)
-                model_name = model.model_class()._meta.verbose_name.title() if model.model_class()._meta.verbose_name else model.model
-                
+                model_name = model_class._meta.verbose_name.title() if model_class._meta.verbose_name else model.model
+
                 if app_name not in data:
                     data[app_name] = []
-                
+
                 data[app_name].append({
-                    'model_name': model_name.replace(" ","_").replace("__","_"),
+                    'model_name': model_name.replace(" ", "_").replace("__", "_"),
                     'base_permissions': permissions,
                     'advanced_permissions': advanced_permissions
                 })
+
         return data
  
     def list(self, request, *args, **kwargs):
@@ -426,14 +495,64 @@ class Routes(generics.ListAPIView):
                     if app_name == 'Employee_Master_Data':
                         app_name = 'Employee'
    
-                    if model.model not in ["employee","leaveapply","leavedependablebucket","leavedependabledetail","nocprocess","resignationrequest","accruetable","aarprocess","aarprocessho","disciplinaryproceedinginquiry","leavenondependabledetail","terminationrequest","permission", "positionassignment", "joblevelassignment", "Disciplinary_Proceeding_Inquiry"] and model.app_label not  in ["employee_master_data","progression","elevation", "authtoken", "admin", "contenttypes", "sessions"]:
+                    if model.model not in ["employee","leavecount","superapprovals","approvals","leaveapply","leavedependablebucket","leavedependabledetail","nocprocess","resignationrequest","accruetable","aarprocess","aarprocessho","disciplinaryproceedinginquiry","leavenondependabledetail","terminationrequest","permission","e_transfer_window_period", "positionassignment", "joblevelassignment", "Disciplinary_Proceeding_Inquiry","holiday","address","e_transfer_process","transferratingtype","transferratingmodeltype","tenure_rating_model_type","tenureratingfarmula","hrdirectoretransferapproval","e_transfer_rating_matrix","distanceratingfarmula","nocapprovals","transferapprovals","disabilityratingfarmula","concernofficerapproval","aarcompetentauthorityapproval","aarcounterassigningofficerapproval","aarhocounterassigningofficerapproval","aarhoreportingofficerapproval","aarprocess","aarreportingofficerapproval","ratingtypelikertscale","ratingtypepoints","ratingtypepointsassignment"] and model.app_label not  in ["disciplinary_proceedings_setup","payroll","notifications","resignation","termination","simple_transfer_Setup","employee_master_data","progression","elevation", "authtoken", "admin", "contenttypes", "sessions"]:
                         if app_name not in data['setups']:
                             data['setups'][app_name] = []
                         data['setups'][app_name].append(model_data)
                     elif model.app_label not in ["auth", "authtoken", "admin", "contenttypes", "sessions"] and model.model not in [ "joblevelassignment","cities","countries","district","tehsil","level_of_education","level_of_skill"]:
                         if app_name not in data['processes']:
                             data['processes'][app_name] = []
+                        if model.model=="e_transfer_window_period":
+                            data["processes"]["E-Transfer Window"]=[]
+                            data["processes"]["E-Transfer Window"].append(model_data)
+
+
                         data['processes'][app_name].append(model_data)
+                data['processes']['Dashboard']=[]
+                data['processes']['HR Calendar']=[]
+                data['processes']['Dashboard'].append(
+                        {
+                            "model_name": "Dashboard",
+                            "base_permissions": [
+                                {
+                                    "Permission": "add"
+                                },
+                                {
+                                    "Permission": "change"
+                                },
+                                {
+                                    "Permission": "delete"
+                                },
+                                {
+                                    "Permission": "view"
+                                }
+                            ],
+                            "advanced_permissions": []
+                        },
+                    
+                            )
+                data['processes']['HR Calendar'].append(
+                        {
+                            "model_name": "HR Calendar",
+                            "base_permissions": [
+                                {
+                                    "Permission": "add"
+                                },
+                                {
+                                    "Permission": "change"
+                                },
+                                {
+                                    "Permission": "delete"
+                                },
+                                {
+                                    "Permission": "view"
+                                }
+                            ],
+                            "advanced_permissions": []
+                        },
+                    
+                            ),
+           
             except Exception as e:
                 print(f"Error processing model {model}: {e}")
         return data
@@ -561,3 +680,27 @@ class ApprovalMatrixAPI(BaseAPIViewSet):
         if self.action == 'list':
             return Approval_list_MatrixSerializer  
         return super().get_serializer_class()
+
+
+class EmployeeMiniDashboard(generics.ListAPIView):
+    serializer_class = EmployeeMiniDashboardSerializer
+
+    def get_queryset(self):
+        employee_id = self.kwargs['employee_id']
+        employee = Employee.objects.get(pk=employee_id)
+        results = []
+        process_counts = {
+            'leave_count': {'count': LeaveApply.objects.filter(employee=employee).count(), 'name': 'Leave'},
+            'termination_count': {'count': TerminationRequest.objects.filter(employee=employee).count(), 'name': 'Termination'},
+            'resignation_count': {'count': ResignationRequest.objects.filter(employee=employee).count(), 'name': 'Resignation'},
+            'elevation_count': {'count': PendingElevation.objects.filter(employee=employee).count(), 'name': 'Elevation'},
+            'progression_count': {'count': PendingProgression.objects.filter(employee=employee).count(), 'name': 'Progression'},
+            'administrative_transfer_count': {'count': Transfer_Process.objects.filter(employee=employee).count(), 'name': 'Administrative Transfer'},
+            'e_transfer_count': {'count': E_Transfer_Process.objects.filter(employee=employee).count(), 'name': 'E-Transfer'},
+            'annual_assessment_count': {'count': AARProcess.objects.filter(employee=employee).count(), 'name': 'Annual Assessment'},
+            'noc_count': {'count': NocProcess.objects.filter(employee=employee).count(), 'name': 'NOC'},
+            'desciplinary_count': {'count': DisciplinaryProceedingRequest.objects.filter(employee=employee).count(), 'name': 'Disciplinary Proceedings'},
+        }
+
+        results.append({'employee_id': employee, 'process_counts': process_counts})
+        return results

@@ -6,10 +6,11 @@ export const RoleManagement = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: "http://127.0.0.1:8000/",
         prepareHeaders: (headers, { getState }) => {
-            const authToken = sessionStorage.getItem("authToken");
-            const csrfToken = Cookies.get("csrftoken"); 
-            if (authToken) {
+            const authToken = Cookies.get("authToken");
+            const csrfToken = Cookies.get("csrftoken");
+            if (authToken && csrfToken) {
                 headers.set("Authorization", `Token ${authToken}`);
+                headers.set("X-CSRFToken", csrfToken);
             }
             headers.set("Content-Type", "application/json");
             return headers;
@@ -27,9 +28,6 @@ export const RoleManagement = createApi({
             query: ({ accessToken }) => ({
                 url: "/basic-info/models/",
                 method: "GET",
-                headers: {
-                    Authorization: `Token  ${accessToken}`,
-                },
             }),
         }),
 
@@ -37,9 +35,6 @@ export const RoleManagement = createApi({
             query: ({ id, accessToken }) => ({
                 url: `/basic-info/GroupAPI/${id}`,
                 method: "GET",
-                headers: {
-                    Authorization: `Token  ${accessToken}`,
-                },
             }),
         }),
         postRole: builder.mutation({
@@ -47,9 +42,6 @@ export const RoleManagement = createApi({
                 url: "/basic-info/GroupAPI/",
                 method: "POST",
                 body: formData,
-                headers: {
-                    "X-CSRFToken": csrfToken,
-                },
             }),
         }),
 
@@ -58,19 +50,13 @@ export const RoleManagement = createApi({
                 url: `/basic-info/GroupAPI/${id}/`,
                 method: "PUT",
                 body: formData,
-                headers: {
-                    "X-CSRFToken": csrfToken,
-                },
             }),
         }),
 
         deleteRole: builder.mutation({
-            query: ({ RoleID, csrfToken }) => ({
-                url: `/basic-info/GroupAPI/${RoleID}`,
+            query: (id) => ({
+                url: `/basic-info/GroupAPI/${id}/`,
                 method: "Delete",
-                headers: {
-                    "X-CSRFToken": csrfToken,
-                },
             }),
         }),
 

@@ -33,27 +33,39 @@ const Roles = () => {
   }, []);
 
   const handleDelete = useCallback(async () => {
-    try {
-      if (!selectedRoleId) return;
-      const csrfToken = 'CCfRefegKyESlirQV4gxqvRm4LL8iklC';
-      const res = await deleteRole({
-        RoleID: selectedRoleId,
-        csrfToken,
-      });
-      if (res.error) {
-        // ... (handle errors)
-      }
-      toast.success('Role Deleted Successfully', {
+    if (!selectedRoleId) {
+      toast.error('No role selected for deletion.', {
         position: 'top-center',
         autoClose: 3000,
       });
-      refetch();
-      setDeleteDialog(false);
-      setSelectedRoleId(null);
-    } catch (error) {
-      console.error('Error deleting role:', error);
+      return;
     }
-  }, [deleteRole, refetch, selectedRoleId]);
+    let id = selectedRoleId;
+
+    try {
+      const res = await deleteRole(id);
+
+      if (res.error) {
+        toast.error(`Failed to delete role: ${res.error.message || 'Please try again later.'}`, {
+          position: 'top-center',
+          autoClose: 3000,
+        });
+      } else {
+        toast.success('Role Deleted Successfully', {
+          position: 'top-center',
+          autoClose: 3000,
+        });
+        refetch();
+        setDeleteDialog(false);
+        setSelectedRoleId(null);
+      }
+    } catch (error) {
+      toast.error(`Error deleting role: ${error.message || 'Unknown error'}`, {
+        position: 'top-center',
+        autoClose: 3000,
+      });
+    }
+  }, [deleteRole, refetch, selectedRoleId, setDeleteDialog, setSelectedRoleId]);
 
   // table data
   const columns = useMemo(
@@ -123,7 +135,6 @@ const Roles = () => {
           <Btn type="new" outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
         </Link>
       </Box>
-
       {loading ? (
         <Loader placement={{ marginTop: '-100px' }} />
       ) : (
@@ -149,7 +160,7 @@ const Roles = () => {
         <Box sx={{ minWidth: '400px', p: 2 }}>
           <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Warning />
-            Are you sure to delete record.
+            Are you sure you want to delete the record?
           </Typography>
           <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
             <Btn

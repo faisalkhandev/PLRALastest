@@ -1,16 +1,15 @@
-import React, { Fragment, useEffect, useState, useCallback, useMemo } from "react";
-import { Typography, Box, Grid, Dialog } from "@mui/material";
+import React, { Fragment, useState, useCallback, useMemo, useEffect} from "react";
+import { Typography, Box, Grid } from "@mui/material";
 import { useTheme } from "@emotion/react";
 import { Btn, InputField, MyTableContainer, Multi_Dropdown, Loader, ErrorHandler } from "../../../Components/index";
 import {
-  useGetJobLevelQuery, useGetJobQuery, usePostJobLevelMutation,
-  useUpdateJobLevelMutation, useDeleteJobLevelMutation
+  useGetJobLevelQuery, useGetJobQuery
 } from "../../../Features/API/API";
 import { JobHeader } from "../../../Data/Setup_Data/Setup_Data";
-import { toast } from 'react-toastify';
 
 const JobLevel = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   // States
   const [formData, setFormData] = useState({ job_abbrivation: '', job_abbrivation_seniority: '', job: '' });
@@ -18,15 +17,14 @@ const JobLevel = () => {
   const [selectRowID, setSelectedRowID] = useState(null);
   const [jobDialogOpen, setJobDialogOpen] = useState(false);
   const [jobName, setJobName] = useState("");
-  const [editDialog, setEditDialog] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState(false);
 
   // Queries
   const { data, isLoading: loading, isError: refreshError, error: queryError, refetch } = useGetJobLevelQuery();
   const { data: jobData, isLoading: jobLoading, isError: jobRefreshError, error: jobQueryError } = useGetJobQuery();
-  const [postJobLevel] = usePostJobLevelMutation();
-  const [updateJobLevel] = useUpdateJobLevelMutation();
-  const [deleteJobLevel] = useDeleteJobLevelMutation();
+
+  useEffect(()=>{
+    refetch();
+  },[])
 
   // Callbacks
   const handleChange = useCallback((event) => {
@@ -52,84 +50,35 @@ const JobLevel = () => {
   }, [formData]);
 
   const resetForm = useCallback(() => {
+    setFormErrors({});
     setIsRowSelected(false);
     setFormData({ job_abbrivation: '', job_abbrivation_seniority: '', job: '' });
     setJobName("");
   }, []);
 
-  const handleDeleteDialog = useCallback(() => {
-    if (isRowSelected) {
-      setDeleteDialog(true);
-    } else {
-      toast.error("Record not selected.", { position: "top-center", autoClose: 3000 });
-    }
-  }, [isRowSelected]);
-
-  const handleSaveData = useCallback(async (e) => {
-    e.preventDefault();
-    if (formData.job_abbrivation === '' || formData.job_abbrivation_seniority === '' || formData.job === '') {
-      toast.error(`Mandatory fields should not be empty.`, { position: "top-center", autoClose: 3000 });
-    } else {
-      try {
-        const res = await postJobLevel(formData);
-        if (res.error) {
-          if (res.error.status === 400) {
-            toast.error("ID already exists.", { position: "top-center", autoClose: 3000 });
-          } else {
-            toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 });
-          }
-        } else {
-          toast.success("JobLevel created successfully.", { position: "top-center", autoClose: 3000 });
-          setFormData({ job_abbrivation: '', job_abbrivation_seniority: '', job: '' });
-          setJobName("");
-          refetch();
-        }
-      } catch (err) {
-        console.error('Error creating JobLevel:', err);
-      }
-    }
-  }, [formData, postJobLevel, refetch]);
-
-
-  const handleUpdateData = useCallback(async () => {
-    try {
-      const res = await updateJobLevel({ selectRowID, updateJobLevelData: formData });
-      if (res.error) {
-        if (res.error.status === 400) {
-          return toast.error("ID already exists.", { position: "top-center", autoClose: 3000 });
-        } else if (res.error.status === 500) {
-          return toast.error("Server is not working", { position: "top-center", autoClose: 3000 });
-        } else if (res.error.status === 409) {
-          return toast.error("Record updation failed due to linking.", { position: "top-center", autoClose: 3000 });
-        } else {
-          return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 });
-        }
-      }
-      toast.success("JobLevel Updated successfully.", { position: "top-center", autoClose: 3000 });
-      setFormData({ job_abbrivation: '', job_abbrivation_seniority: '', job: '' });
-      setJobName("");
-      refetch();
-    } catch (err) {
-      console.error('Error creating Job Level:', err);
-    }
-  }, [updateJobLevel, selectRowID, formData, refetch]);
-
   // Memoized columns
   const columns = useMemo(() => [
     {
       field: 'job_abbrivation', headerName: 'Job Level', flex: 1, renderCell: (params) => {
-        const onView = () => { handleRowClick(params); };
-        const concatenatedValue = `${params.value}_${params.row.job_abbrivation_seniority}`;
-        return (<span onClick={onView} className='table_first_column' style={{ color: "#379237", textDecoration: 'underline' }}>{concatenatedValue}</span>);
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value + "-" + params.row.job_abbrivation_seniority}</span>
+        );
       },
     },
     {
       field: 'job', headerName: 'Job', flex: 1,
+      valueGetter: (params) => params.row?.job?.job_title || '',
       renderCell: (params) => {
-        return (<span>{params.row.job.job_title}</span>)
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       }
     },
   ], [handleRowClick]);
+
+
 
   return (
     <div>
@@ -156,7 +105,7 @@ const JobLevel = () => {
             </Grid>
             <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
               <InputField name="job_abbrivation_seniority" label="Level" placeholder="Enter Job Level Seniority" type="text" value={formData.job_abbrivation_seniority} onChange={handleChange} mandatory InputState={true} />
-              <InputField name="job_abbrivation_seniority" label="Job Level" value={formData.job_abbrivation + "_" + formData.job_abbrivation_seniority} InputState={true} />
+              <InputField name="job_abbrivation_seniority" label="Job Level" value={formData.job_abbrivation + "-" + formData.job_abbrivation_seniority} InputState={true} />
             </Grid>
           </Grid>
         </form>
@@ -173,23 +122,13 @@ const JobLevel = () => {
                     data={data.results}
                     RowFilterWith="j_l_rec_id"
                     onRowClick={handleRowClick}
-                    customPageSize={12}
-                    minHeight={'calc(100vh - 400px)'}
+                    customPageSize={15}
+                    minHeight={'calc(100vh - 384px)'}
                   />
                 ) : null
               )}
           </>
         )}
-
-        <Dialog open={editDialog} onClose={() => setEditDialog(false)} sx={{ m: 'auto' }}>
-          <Box sx={{ minWidth: '350px', p: 2 }}>
-            <Typography variant="h6" color="initial" >Do you want to update your data.</Typography>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-              <Btn type="sure" onClick={() => { handleUpdateData(); setEditDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-              <Btn type="close" onClick={() => setEditDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-            </Box>
-          </Box>
-        </Dialog>
       </Fragment>
     </div>
   );

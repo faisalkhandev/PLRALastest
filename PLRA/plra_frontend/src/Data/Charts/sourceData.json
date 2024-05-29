@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Availed",
+    "value":16
+  },
+  {
+    "label": "Available",
+    "value": 15
+  },
+  {
+    "label": "Leave",
+    "value": 11
+  },
+  {
+    "label": "Approved",
+    "value": 9
+  }
+]

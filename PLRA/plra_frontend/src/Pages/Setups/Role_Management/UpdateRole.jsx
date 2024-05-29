@@ -15,9 +15,9 @@ import Cookies from 'js-cookie';
 
 const roles = [
     { id: '1', name: 'Add' },
-    { id: '2', name: 'View' },
-    { id: '3', name: 'Update' },
-    { id: '4', name: 'Delete' },
+    { id: '2', name: 'Update' },
+    { id: '3', name: 'Delete' },
+    { id: '4', name: 'View' },
 ];
 
 const BasicRole = () => {
@@ -35,7 +35,7 @@ const BasicRole = () => {
     const goBack = () => navigate(-1);
     
     useEffect(() => {
-      const authToken = sessionStorage.getItem("authToken");
+      const authToken = Cookies.get("authToken");
       const csrfT = Cookies.get('csrftoken');
       setAccessToken(authToken);
       setCsrfToken(csrfT)
@@ -97,7 +97,7 @@ const BasicRole = () => {
             toast.error(errorMessage, { position: "top-center", autoClose: 3000 });
         } else {
             setClickedCheckboxIds([]);
-            navigate('/employee/setup/AllRoles');
+            navigate('/employee/setup/Group');
             refetch();
         }
     };
@@ -152,10 +152,11 @@ const BasicRole = () => {
                                     <Accordion key={category} style={{ borderRadius: '8px', marginTop: '10px', backgroundColor: 'rgb(197 197 197 / 11%)' }}>
                                         <AccordionSummary expandIcon={<DownArrow />} aria-controls={`${category}-content`} id={`${category}-header`} >
                                             <Typography variant="h6" fontWeight='bold' display='flex' alignItems='center'>{category}</Typography>
-                                            {/* <Typography variant="h6" width='100%' display='flex' alignItems='center' justifyContent='end' >
+                                         {/* <Typography variant="h6" width='100%' display='flex' alignItems='center' justifyContent='end' >
                                                 All Permission's
                                             </Typography>
-                                            <Checkbox onClick={handleCheckbox} /> */}
+                                            <Checkbox onClick={handleCheckbox} /> 
+                                        */}
                                         </AccordionSummary>
                                         <AccordionDetails style={{ backgroundColor: 'white', borderRadius: '10px', margin: '0 20px 10px 20px', }}>
                                             <Grid container sx={{ display: 'flex', justifyContent: 'space-between', }}>
@@ -177,19 +178,18 @@ const BasicRole = () => {
                                                         {record.base_permissions.map((permissions) => (
                                                             <Grid item key={permissions.id}>
                                                                 <Checkbox
-                                                                    checked={clickedCheckboxIds.includes(permissions.id)}
+                                                                    checked={clickedCheckboxIds?.includes(permissions.id)}
                                                                     onChange={(event) => handleCheckbox(event, permissions.id, false)}
                                                                 />
                                                             </Grid>
                                                         ))}
                                                         {/* Child Accordion */}
-                                                        {record.advanced_permissions.length > 0 && (
+                                                        {/* {record.advanced_permissions.length > 0 && (
                                                             <Accordion style={{ boxShadow: 'none', backgroundColor: 'rgb(197 197 197 / 11%)', borderRadius: '10px', width: '180%', margin: '10px' }} >
                                                                 <AccordionSummary expandIcon={<DownArrow />} aria-controls={`${category}-child-content`} id={`${category}-child-header`}>
                                                                     <Typography variant="h6">Advance Permission for {record.model_name}</Typography>
                                                                 </AccordionSummary>
                                                                 <AccordionDetails>
-                                                                    {/* api goes here */}
                                                                     <Grid container sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: '35px' }}>
                                                                         <Grid item sx={{ display: 'inline-block', width: "calc(100% - 400px)" }}>
                                                                             <Typography sx={{ mt: '5px', fontWeight: 'bold' }}>Role Type</Typography>
@@ -200,7 +200,6 @@ const BasicRole = () => {
                                                                             </Grid>
                                                                         ))}
                                                                     </Grid>
-
                                                                     <Box>
                                                                         {record.advanced_permissions.map((advancedPermissionGroup) => (
                                                                             <Grid container sx={{ display: 'flex', justifyContent: 'space-between', pr: '35px' }}>
@@ -224,7 +223,7 @@ const BasicRole = () => {
                                                                     </Box>
                                                                 </AccordionDetails>
                                                             </Accordion>
-                                                        )}
+                                                        )} */}
                                                     </Grid>
                                                 ))}
                                             </Box>

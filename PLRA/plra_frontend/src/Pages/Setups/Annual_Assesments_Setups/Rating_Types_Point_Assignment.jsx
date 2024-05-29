@@ -9,7 +9,6 @@ import {
 import "../../Styles.css"
 import { toast } from 'react-toastify'
 import { EmployeeHeader } from "../../../Data/Setup_Data/Setup_Data";
-import { faSliders } from '@fortawesome/free-solid-svg-icons';
 
 
 const Rating_Types_Point_Assignment = () => {
@@ -23,7 +22,7 @@ const Rating_Types_Point_Assignment = () => {
   const [employeeDialog, setEmployeeDialog] = useState(false);
   const [employeeData, setEmployeeData] = useState("");
   const [ratingTypePointAssignmentDialog, setRatingTypePointAssignmentDialog] = useState(false);
-  
+
 
   //Queries
   const { data, isLoading: loading, isError: refreshError, error: queryError, refetch } = useGetRatingTypePointAssignmentQuery();
@@ -40,6 +39,12 @@ const Rating_Types_Point_Assignment = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+
+    if (['max_points', 'point_earned'].includes(name) && parseInt(value) < 1) {
+      toast.error(`${name.charAt(0).toUpperCase() + name.slice(1)} can't be a negative number`, { position: "top-center", autoClose: 3000 })
+      return;
+    }
+
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
@@ -119,13 +124,13 @@ const Rating_Types_Point_Assignment = () => {
     { field: 'max_points', headerName: 'Max Points', flex: true },
     { field: 'point_earned', headerName: 'Point Earned', flex: true },
   ];
-  
+
   return (
     <Fragment>
       <Typography variant="h4" sx={{ width: '100%', display: 'flex', justifyContent: 'center', color: theme.palette.primary.main, fontWeight: 'bold' }}> Rating Type Point Assignment</Typography>
       <Box sx={{ width: "100%", display: "flex", mb: 1 }}>
         <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
-        <Btn type="delete" onClick={()=>setRatingTypePointAssignmentDialog(true)}/>
+        <Btn type="delete" onClick={() => setRatingTypePointAssignmentDialog(true)} />
         <Btn onClick={isRowSelected ? () => setEditDialog(true) : handleSaveData} type="save" />
       </Box>
 
@@ -171,7 +176,7 @@ const Rating_Types_Point_Assignment = () => {
           </Box>
         </Box>
       </Dialog>
-      
+
       <Dialog open={ratingTypePointAssignmentDialog} onClose={() => setRatingTypePointAssignmentDialog(false)} sx={{ m: 'auto' }}>
         <Box sx={{ minWidth: '350px', p: 2 }}>
           <Typography variant="h6" color="initial" >Do you want to delete this record.</Typography>

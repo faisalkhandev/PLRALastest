@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-
+# from django.utils.formats import get_format
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +25,6 @@ SECRET_KEY = 'django-insecure-icy(##%#5%&i2ic#zcmi5_al)urn+c9k6f$uag+nof_quft80k
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = ["*"]
 
 CORS_ORIGIN_ALLOW_ALL = True
@@ -36,8 +35,9 @@ CORS_ORIGIN_WHITELIST = [
 
 AUTH_USER_MODEL = 'employee_basic_information.Employee'
 
-
 # Application definition
+DATE_FORMAT = 'd-m-Y'
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'notifications',
     # 'django_apscheduler',  # required for serving swagger ui's css/js files
     'drf_yasg',
+    'dashboards',
+    'import_export',
     'corsheaders',
     'HR_Setups',
     'rest_framework',
@@ -67,7 +69,7 @@ INSTALLED_APPS = [
     'disciplinary_proceedings_setup',
     'elevation',
     'progression',
-    'payroll_period',
+    'payroll',
     'rest_framework.authtoken'
 ]
 
@@ -83,6 +85,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
 ]
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000000000
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # # or allow read-only access for unauthenticated users.
@@ -164,7 +167,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Karachi'
 
 USE_I18N = True
 

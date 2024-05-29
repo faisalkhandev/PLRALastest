@@ -70,7 +70,6 @@
   background-color: rgba(55, 146, 55, 0.05);
   cursor: pointer;
   position: relative;
-  max-height: auto;
 }
 
 .Box_Class::before {
@@ -78,7 +77,6 @@
   position: absolute;
   left: 0px;
   top: 0px;
-  height: auto;
   border-left: 4px solid #379237;
 }
 
@@ -117,12 +115,12 @@
   border-radius: 50%;
 }
 
-.table_first_column {
+/* .table_first_column {
   transition: color 0.3s;
-}
+} */
 
 .table_first_column:hover {
-  text-decoration: underline;
+  /* text-decoration: underline; */
   color: var(--green-main);
   cursor: pointer;
 }
@@ -161,9 +159,16 @@
   margin-top: 5px;
 }
 
-.leave_approval_dropdown{
+.leave_approval_dropdown {
   width: 100%;
-  border: 1px solid rgba(195, 195, 195,0.7);
+  border: 1px solid rgba(195, 195, 195, 0.7);
   border-radius: 4px;
   padding: 5.5px;
+}
+
+.swiper-text {
+  width: 80%;
+  font-size: 40px;
+  line-height: 50px;
+  font-weight: lighter;
 }

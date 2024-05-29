@@ -1,16 +1,17 @@
-import React, { Fragment, useState, useCallback, useMemo, useEffect } from 'react';
-import { Typography, Grid, Box, Dialog } from '@mui/material';
+import React, { Fragment, useState, useCallback, useMemo } from 'react';
+import { Typography, Grid, Box } from '@mui/material';
 import { useTheme } from '@emotion/react';
-import { Warning } from '../../../Assets/Icons';
-import { Btn, InputField, MyTableContainer, Loader, ErrorHandler } from '../../../Components/index';
+import { Btn, InputField, MyTableContainer, Loader, ErrorHandler, DialogBox } from '../../../Components/index';
 import {
   useDeleteEmployeeTitleMutation, useGetEmployeeTitleQuery, usePostEmployeeTitleMutation,
   useUpdateEmployeeTitleMutation
 } from '../../../Features/API/API';
-import { toast } from 'react-toastify';
+import { showToast } from '../../../Components/Common/ToastCard'
+import StatusCodeHandler from '../../../Components/Common/StatusCodeHandler';
 
 const EmployeeTitle = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   // States
   const [editDialog, setEditDialog] = useState(false);
@@ -20,19 +21,14 @@ const EmployeeTitle = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   // Queries
-  const {
-    data,
-    isLoading: loading,
-    isError: refreshError,
-    error: queryError,
-    refetch,
-  } = useGetEmployeeTitleQuery();
+  const { data, isLoading: loading, isError: refreshError, error: queryError, refetch, } = useGetEmployeeTitleQuery();
   const [postEmployeeTitle] = usePostEmployeeTitleMutation();
   const [updateEmployeeTitle] = useUpdateEmployeeTitleMutation();
   const [deleteEmployeeTitle] = useDeleteEmployeeTitleMutation();
 
   // Callbacks
   const resetForm = useCallback(() => {
+    setFormErrors({});
     setIsRowSelected(false);
     setFormData({ employee_title: '' });
   }, []);
@@ -52,61 +48,59 @@ const EmployeeTitle = () => {
 
   const handleSaveData = useCallback(async (e) => {
     e.preventDefault();
-    if (formData.employee_title === '') {
-      toast.error("Mandatory field's should not be empty.", { position: 'top-center', autoClose: 3000 });
-    } else {
-      try {
-        const res = await postEmployeeTitle(formData);
-        if (res.error) {
-          if (res.error.status === 400) {
-            toast.error('ID already exists.', { position: 'top-center', autoClose: 3000 });
-          } else {
-            toast.error('Something is wrong!!!', { position: 'top-center', autoClose: 3000 });
-          }
-        } else {
-          toast.success('Employee Title created successfully.', { position: 'top-center', autoClose: 3000 });
-          setFormData({ employee_title: '' });
-          refetch();
+    try {
+      const res = await postEmployeeTitle(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-      } catch (err) {
-        console.error('Error creating Employee Title:', err);
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record created Successfully`, "success");
+      resetForm();
+      refetch();
+    } catch (err) {
+      showToast(`${err.message}`, "error");
     }
   }, [formData, postEmployeeTitle, refetch]);
 
   const handleUpdateData = useCallback(async () => {
     try {
       const res = await updateEmployeeTitle({ selectRowID, updateEmployeeData: formData });
-      if (res.error) {
-        toast.error('ID already exists.', { position: 'top-center', autoClose: 3000 });
-      } else {
-        toast.success('Employee Title Updated successfully.', { position: 'top-center', autoClose: 3000 });
-        setFormData({ employee_title: '' });
-        setIsRowSelected(false);
-        refetch();
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record updated Successfully`, "success");
+      resetForm();
+      refetch();
     } catch (err) {
-      console.error('Error updating Employee Title:', err);
+      showToast(`${err.message}`, "error");
     }
   }, [formData, selectRowID, updateEmployeeTitle, refetch]);
 
   const handleDelete = useCallback(async () => {
     try {
       const res = await deleteEmployeeTitle({ selectRowID });
-      if (res.error) {
-        if (res.error.status === 409) {
-          toast.error('Record not deleted due to connectivity.', { position: 'top-center', autoClose: 3000 });
-        } else {
-          toast.error('Something is wrong!!!', { position: 'top-center', autoClose: 3000 });
-        }
-      } else {
-        toast.success('Employee Title deleted.', { position: 'top-center', autoClose: 3000 });
-        setFormData({ employee_title: '' });
-        setIsRowSelected(false);
-        refetch();
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record Deleted Successfully`, "success");
+      resetForm();
+      refetch();
     } catch (err) {
-      console.error('Error deleting Employee Title:', err);
+      return showToast(`${err.message}`, "error");
     }
   }, [deleteEmployeeTitle, selectRowID, refetch]);
 
@@ -114,7 +108,7 @@ const EmployeeTitle = () => {
     if (isRowSelected) {
       setDeleteDialog(true);
     } else {
-      toast.error('Record not selected.', { position: 'top-center', autoClose: 3000 });
+      return showToast('Record not Selected', 'error');
     }
   }, [isRowSelected]);
 
@@ -126,28 +120,15 @@ const EmployeeTitle = () => {
         headerName: 'Employee Title',
         flex: 1,
         renderCell: (params) => {
-          const onView = () => {
-            handleRowClick(params);
-          };
+          const onView = () => { handleRowClick(params) };
           return (
-            <span
-              onClick={onView}
-              className="table_first_column"
-              style={{ color: '#379237', textDecoration: 'underline' }}
-            >
-              {params.value}
-            </span>
+            <span onClick={onView} className='table_first_column'>{params.value}</span>
           );
         },
       },
     ],
     [handleRowClick]
   );
-
-  // Effects
-  useEffect(() => {
-    resetForm();
-  }, [resetForm]);
 
   return (
     <>
@@ -156,12 +137,32 @@ const EmployeeTitle = () => {
           <Typography variant='h4' sx={{ width: '100%', color: theme.palette.primary.main, fontWeight: '500', fontSize: '20px' }}>Employee Title</Typography>
           <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
           <Btn onClick={isRowSelected ? () => setEditDialog(true) : handleSaveData} type="save" />
+          {
+            editDialog ?
+              <DialogBox
+                open={editDialog}
+                onClose={() => setEditDialog(false)}
+                closeClick={() => setEditDialog(false)}
+                sureClick={() => { handleUpdateData(); setEditDialog(false); }}
+                title={"Are you sure you want to update the record?"}
+              /> : ''
+          }
           <Btn type="delete" onClick={handleDeleteDialog} />
+          {
+            deleteDialog ?
+              <DialogBox
+                open={deleteDialog}
+                onClose={() => setDeleteDialog(false)}
+                closeClick={() => setDeleteDialog(false)}
+                sureClick={() => { handleDelete(); setDeleteDialog(false); }}
+                title={"Are you sure you want to delete the record?"}
+              /> : ''
+          }
         </Box>
         <form action="">
           <Grid container columnSpacing={8} spacing={4}>
             <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1, mb: 4 }}>
-              <InputField name="employee_title" label="Employee Title" value={formData.employee_title || ""} placeholder="Select Title" type="text" onChange={handleChange} />
+              <InputField name="employee_title" label="Employee Title" value={formData.employee_title || ""} placeholder="Select Title" type="text" onChange={handleChange} error={formErrors?.data?.employee_title} />
             </Grid>
           </Grid>
         </form>
@@ -181,31 +182,12 @@ const EmployeeTitle = () => {
                     RowFilterWith="e_t_rec_id"
                     onRowClick={handleRowClick}
                     outerCSS={{ mt: 4 }}
-                    minHeight={"calc(100vh - 350px)"}
+                    minHeight={"calc(100vh - 368px)"}
                   />
                 ) : null
               )}
           </>
         )}
-
-        <Dialog open={editDialog} onClose={() => setEditDialog(false)} sx={{ m: 'auto' }}>
-          <Box sx={{ minWidth: '350px', p: 2 }}>
-            <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }} > <Warning />Do you want to update your data.</Typography>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-              <Btn type="sure" onClick={() => { handleUpdateData(); setEditDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-              <Btn type="close" onClick={() => setEditDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-            </Box>
-          </Box>
-        </Dialog>
-        <Dialog open={deleteDialog} onClose={() => setdeleteDialog(false)} sx={{ m: 'auto' }}>
-          <Box sx={{ minWidth: '350px', p: 2 }}>
-            <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }} > <Warning />Do you want to delete your data.</Typography>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-              <Btn type="sure" onClick={() => { handleDelete(); setdeleteDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-              <Btn type="close" onClick={() => setdeleteDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-            </Box>
-          </Box>
-        </Dialog>
       </Fragment>
     </>
   )

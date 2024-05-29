@@ -39,12 +39,12 @@ from django.contrib.auth.hashers import make_password
 #             ("can_read_name", "Can Read Name"),
 #         ]
 
-# class EmployeePayrollClass(models.Model):
-#     name = models.CharField(max_length=20)
-#     description = models.TextField(max_length=100)
+class EmployeePayrollClass(models.Model):
+    name = models.CharField(max_length=20)
+    description = models.TextField(max_length=100)
 
-#     def __str__(self):
-#         return self.name
+    def __str__(self):
+        return self.name
     
 
 class Wing(models.Model):
@@ -205,7 +205,7 @@ class Job(models.Model):
                 super(Job, self).save(*args, **kwargs)
                 # Create or update JobLevel records based on the new no_of_seniority_level
                 for i in range(1, self.no_of_seniority_level + 1):
-                    job_level, created = JobLevel.objects.get_or_create(
+                    job_level, created = JobLevel.objects.update_or_create(
                         job=self,
                         job_abbrivation=self.job_abbrivation,
                         job_abbrivation_seniority=i
@@ -222,7 +222,7 @@ class Job(models.Model):
             super(Job, self).save(*args, **kwargs)
             self.job_id = f"{self.job_abbrivation}_{self.job_title}_{self.no_of_seniority_level}"
             super(Job, self).save(*args, **kwargs)
-            if self.no_of_seniority_level and self.no_of_seniority_level > 1:
+            if self.no_of_seniority_level and self.no_of_seniority_level >= 1:
                 for i in range(1, self.no_of_seniority_level + 1):
                     job_level = JobLevel.objects.create(
                         job=self,
@@ -244,7 +244,7 @@ class JobLevel(models.Model):
 class Position(models.Model):
     FULL_TIME_EQUIVALENT = 1.00
     p_rec_id = models.AutoField(primary_key=True)
-    position_desc = models.CharField(max_length=50, blank=True, null=True)
+    position_desc = models.CharField(max_length=90, blank=True, null=True)
     job = models.ForeignKey(Job, on_delete=models.PROTECT)
     position_id = models.CharField(max_length=50, blank=True, null=True)
     no_of_position = models.IntegerField(default=1)
@@ -257,53 +257,53 @@ class Position(models.Model):
     full_time_equivalent = models.CharField(
         max_length=255, default=FULL_TIME_EQUIVALENT,blank=True, null=True,)
     def __str__(self):
-            return f"{self.position_id}"
+            return f"{self.position_id} {self.wing}"
     
     
     def create_position(self, index, no_of_position):
         self.position_id = f"{self.job.job_abbrivation}_{self.location}_{index:02d}"
         return Position(
-            position_desc=f"{self.job} {self.location}",
+            position_desc=f"{self.job.job_title}",
             location=self.location,
             job=self.job,
             wing=self.wing,
             sub_wing=self.sub_wing,
             no_of_position=no_of_position,
             position_type=self.position_type,
-            open_position=self.open_position,
+            open_position=True,
+            position_active=True,
             full_time_equivalent=self.full_time_equivalent,
             position_id=self.position_id
         )
 
-    # def create_position(self, index, no_of_position):
-    #     # Generate a new position_id for the new position
-    #     new_position_id = f"{self.job.job_abbrivation}_{self.location}_{index:02d}"
-    #     return Position(
-    #         position_desc=f"{self.job} {self.location}",
-    #         location=self.location,
-    #         job=self.job,
-    #         wing=self.wing,
-    #         sub_wing=self.sub_wing,
-    #         no_of_position=no_of_position,
-    #         position_type=self.position_type,
-    #         open_position=self.open_position,
-    #         full_time_equivalent=self.full_time_equivalent,
-    #         position_id=new_position_id
-    #     )
+    
 
     def save(self, *args, **kwargs):
         # Check if the instance is being created or updated
         is_new = self._state.adding
-        self.position_desc = f"{self.job} {self.location}"
-
+        self.position_desc = self.job.job_title
         if is_new:
-            # Generate the initial position_id for the first position
-            self.position_id = f"{self.job.job_abbrivation}_{self.location}_01"
-            # Save the current instance
-            super(Position, self).save(*args, **kwargs)
-            # If it's a new instance, create additional positions as needed
-            positions_to_create = [self.create_position(i, self.no_of_position) for i in range(2, self.no_of_position + 1)]
-            Position.objects.bulk_create(positions_to_create)
+            existing_position = Position.objects.filter(
+                location=self.location,
+                job=self.job,
+                wing=self.wing,
+                sub_wing=self.sub_wing,
+                position_type=self.position_type,
+            ).exclude(pk=self.pk).first()
+
+            if existing_position:
+                existing_position.no_of_position += self.no_of_position
+                existing_position.save()
+                # Don't save current instance
+                return
+            else:
+                # Generate the initial position_id for the first position
+                self.position_id = f"{self.job.job_abbrivation}_{self.location}_01"
+                # Save the current instance
+                super(Position, self).save(*args, **kwargs)
+                # If it's a new instance, create additional positions as needed
+                positions_to_create = [self.create_position(i, self.no_of_position) for i in range(2, self.no_of_position + 1)]
+                Position.objects.bulk_create(positions_to_create)
         else:
             # Save the current instance without changing the position_id
             super(Position, self).save(*args, **kwargs)
@@ -333,6 +333,8 @@ class Position(models.Model):
 
             # Update no_of_position in all previous instances
             current_positions.update(no_of_position=self.no_of_position)
+        # if not is_new: 
+            
 class JobLevelAssignment(models.Model):
     employee = models.ForeignKey('Employee', on_delete=models.PROTECT) 
     job_level = models.ForeignKey(JobLevel, on_delete=models.PROTECT)
@@ -351,21 +353,26 @@ class JobLevelAssignment(models.Model):
             self.months_in_position = delta.years * 12 + delta.months
         else:
             self.months_in_position = 0
-        validity = JobLevelValidity.objects.get(job_level=self.job_level)
-        if self.assignment_start is not None and self.assignment_start and validity is not None:
-            # Calculate the current date
-            current_date = datetime.now().date()
-            # Add the number of months to the current date
-            next_date = current_date + relativedelta(months=validity.validity)
-            # Store next_date in a new variable
-            self.assignment_end = next_date
+        try:
+            validity = JobLevelValidity.objects.get(job_level=self.job_level)
+            if self.assignment_start is not None and self.assignment_start and validity is not None:
+                # Calculate the current date
+                current_date = datetime.now().date()
+                # Add the number of months to the current date
+                next_date = current_date + relativedelta(months=validity.validity)
+                # Store next_date in a new variable
+                self.assignment_end = next_date
+        except JobLevelValidity.DoesNotExist:
+            # Handle the case where JobLevelValidity does not exist
+            pass
         super(JobLevelAssignment, self).save(*args, **kwargs)
+
 class ApprovalMatrix(models.Model):
     a_m_rec_id = models.AutoField(primary_key=True)
     position = models.ForeignKey(
         Position,
         on_delete=models.PROTECT,
-        related_name='approval_matrix'
+        related_name='approval_matrix',unique=True
     )
     reporting_position = models.ForeignKey(
         Position,
@@ -396,35 +403,57 @@ class ApprovalMatrix(models.Model):
                 "A position can only be associated with either reporting or counter assigning, not both.")
     # Additional fields for your ApprovalMatrix model
     def save(self, *args, **kwargs):
-        self.clean()
-        super(ApprovalMatrix, self).save(*args, **kwargs)
+        is_new = not self.pk
         try:
-            employee = Employee.objects.get(position=self.position)
-            if (
-                    self.reporting_position and
-                    employee.reporting_officer != self.reporting_position
-            ):
-                employee.reporting_officer = Employee.objects.get(
-                    position=self.reporting_position)
-                employee.save()
-            if (
-                    self.counter_assigning_position and
-                    employee.counter_assigning_officer != self.counter_assigning_position
-            ):
-                employee.counter_assigning_officer = Employee.objects.get(
-                    position=self.counter_assigning_position)
+                employee = Employee.objects.get(position=self.position)
+                if self.reporting_position:
+                    employee.reporting_officer = Employee.objects.get(
+                        position=self.reporting_position)
+                if self.counter_assigning_position:
+                    employee.counter_assigning_officer = Employee.objects.get(
+                        position=self.counter_assigning_position)
                 employee.save()
         except Employee.DoesNotExist:
-            pass
-    def __str__(self):
-        return str(self.position)
+                pass
+        super(ApprovalMatrix, self).save(*args, **kwargs)
+
+        if is_new:
+            try:
+                employee = Employee.objects.get(position=self.position)
+                if self.reporting_position:
+                    employee.reporting_officer = Employee.objects.get(
+                        position=self.reporting_position)
+                if self.counter_assigning_position:
+                    employee.counter_assigning_officer = Employee.objects.get(
+                        position=self.counter_assigning_position)
+                employee.save()
+            except Employee.DoesNotExist:
+                pass
+        else:
+            try:
+                employee = Employee.objects.get(position=self.position)
+                if self.reporting_position:
+                    employee.reporting_officer = Employee.objects.get(
+                        position=self.reporting_position)
+                if self.counter_assigning_position:
+                    employee.counter_assigning_officer = Employee.objects.get(
+                        position=self.counter_assigning_position)
+                employee.save()
+            except Employee.DoesNotExist:
+                pass
+            except Employee.DoesNotExist:
+                pass
+
 @receiver(pre_delete, sender=ApprovalMatrix)
 def update_employee_from_approval_matrix(sender, instance, **kwargs):
-    related_employees = Employee.objects.filter(position=instance.position)
-    for employee in related_employees:
+    try:
+        employee = Employee.objects.get(position=instance.position)
         employee.reporting_officer = None
         employee.counter_assigning_officer = None
         employee.save()
+    except Employee.DoesNotExist:
+        pass
+
 class Employee_Title(models.Model):
     e_t_rec_id = models.AutoField(primary_key=True)
     employee_title = models.CharField(max_length=100,unique=True)
@@ -434,18 +463,16 @@ class Employee_Title(models.Model):
 class Employee(AbstractBaseUser, PermissionsMixin):
     # history = HistoricalRecords()
     username = None
-    employee_no = models.CharField(max_length=50, blank=True)
-    # employee_class = models.ForeignKey(EmployeePayrollClass, on_delete=models.PROTECT, related_name='EmployeePayrollClass', blank=True, null=True)
-
+    employee_no = models.CharField(max_length=50,  unique=True)
     # employee_class = models.ForeignKey(EmployeePayrollClass, on_delete=models.PROTECT, related_name='EmployeePayrollClass', blank=True, null=True)
     id = models.AutoField(primary_key=True)
     cnic = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     father_name = models.CharField(max_length=50)
-    passport_number = models.CharField(max_length=50)
-    domicile_district = models.CharField(max_length=50, blank=True, null=True)
-    phoneNumber = PhoneNumberField(region="PK", blank=True)
+    passport_number = models.CharField(max_length=50, blank=True, null=True)
+    domicile_district = models.CharField(max_length=50,)
+    phoneNumber = PhoneNumberField(region="PK")
     employee_image = models.ImageField(
         upload_to='Images', blank=True, null=True)
     employee_cnic_image_front = models.ImageField(
@@ -462,20 +489,20 @@ class Employee(AbstractBaseUser, PermissionsMixin):
     )
     date_of_joining = models.DateField(null=True, blank=True)
     service_duration = models.CharField(max_length=100, blank=True, null=True)
-    center = models.ForeignKey(Center, on_delete=models.SET_NULL,
+    center = models.ForeignKey(Center, on_delete=models.PROTECT,
                                null=True,  # Allow the ForeignKey to be nullable
                                blank=True  # Allow the ForeignKey to be optional in forms
                                )
-    position = models.OneToOneField(Position, on_delete=models.SET_NULL,
+    position = models.OneToOneField(Position, on_delete=models.PROTECT,
                                     null=True,  # Allow the ForeignKey to be nullable
                                     blank=True  # Allow the ForeignKey to be optional in forms
                                     )
-    reporting_officer = models.ForeignKey('self', on_delete=models.SET_NULL,
+    reporting_officer = models.ForeignKey('self', on_delete=models.PROTECT,
                                           null=True,  # Allow the ForeignKey to be nullable
                                           blank=True,
                                           related_name='roficer'
                                           )
-    counter_assigning_officer = models.ForeignKey('self', on_delete=models.SET_NULL,
+    counter_assigning_officer = models.ForeignKey('self', on_delete=models.PROTECT,
                                                   null=True,  # Allow the ForeignKey to be nullable
                                                   blank=True,
                                                   related_name='csoficer'
@@ -493,10 +520,7 @@ class Employee(AbstractBaseUser, PermissionsMixin):
         if not self.pk:
             hash_pass = make_password(self.password)
             self.password=hash_pass
-        if self.position:
-            instance = Position.objects.get(p_rec_id=self.position.p_rec_id)
-            instance.open_position = False
-            instance.save()
+        
         if self.date_of_joining and self.date_of_joining <= today:
             duration = today - self.date_of_joining
             years = duration.days // 365
@@ -511,16 +535,14 @@ class Employee(AbstractBaseUser, PermissionsMixin):
                     position=self.position)
                 if (
                         self.reporting_officer and
-                        approval_matrix.reporting_position != self.reporting_officer.position
+                        approval_matrix.reporting_position != self.reporting_officer.position or self.reporting_officer is None
                 ):
-                    approval_matrix.reporting_position = self.reporting_officer.position
-                    approval_matrix.save()
+                    self.reporting_officer=Employee.objects.filter(position=approval_matrix.reporting_position).first()
                 if (
                         self.counter_assigning_officer and
-                        approval_matrix.counter_assigning_position != self.counter_assigning_officer.position
+                        approval_matrix.counter_assigning_position != self.counter_assigning_officer.position or self.counter_assigning_officer is None
                 ):
-                    approval_matrix.counter_assigning_position = self.counter_assigning_officer.position
-                    approval_matrix.save()
+                    self.counter_assigning_officer= Employee.objects.filter(position=approval_matrix.counter_assigning_position).first()
                 
             except ApprovalMatrix.DoesNotExist:
                 pass
@@ -536,35 +558,81 @@ class PositionAssignment(models.Model):
     primary_position = models.BooleanField(default=False)
     months_in_position = models.PositiveIntegerField(blank=True, null=True)
     active = models.BooleanField(default=False)
+
     class Meta:
-        verbose_name="Position"
-        unique_together = ['active', 'primary_position','employee']
+        verbose_name = "Position"
+        unique_together = ['active', 'primary_position', 'employee']
+
     def save(self, *args, **kwargs):
-        if not self.pk or self.employee.reporting_officer is None :
-            related_position=ApprovalMatrix.objects.filter(position=self.position).first()
-            if related_position:
-                related_position.save()
-        if self.primary_position  is True and self.active is True:
-            res=Employee.objects.get(id=self.employee.id)
-            if res:
-                res.position=self.position
-                self.position.open_position=False
-                res.save()
-        else:
-            res=Employee.objects.get(id=self.employee.id)
-            if res:
-                res.position=None
-                self.position.open_position=True
-                res.save()
-        if self.assignment_start is not None and self.assignment_start <= datetime.now().date():
+        # Handle case when the position is assigned as primary and active
+        if self.primary_position :
+            # Update employee's position
+            self.employee.position = self.position
+            self.position.open_position = False
+            self.position.save()
+            self.employee.save()
+
+            # Handle approval matrix for reporting and counter-assigning officers
+            approval_matrix = ApprovalMatrix.objects.filter(position=self.position).first()
+
+            if approval_matrix:
+                self.employee.reporting_officer = Employee.objects.filter(position=approval_matrix.reporting_position).first()
+                self.employee.counter_assigning_officer = Employee.objects.filter(position=approval_matrix.counter_assigning_position).first()
+                self.employee.save()
+            else:
+                self.employee.reporting_officer = None
+                self.employee.counter_assigning_officer = None
+                self.employee.save()
+            r_approval_matrix = ApprovalMatrix.objects.filter(reporting_position=self.position).first()
+            if r_approval_matrix:
+                emp=Employee.objects.filter(position=r_approval_matrix.position).first()
+                emp.reporting_officer=self.employee
+                emp.save()
+            else:
+                self.employee.reporting_officer = None
+                self.employee.counter_assigning_officer = None
+                self.employee.save()
+            ca_approval_matrix = ApprovalMatrix.objects.filter(counter_assigning_position=self.position).first()
+            if ca_approval_matrix:
+                emp=Employee.objects.filter(position=ca_approval_matrix.position).first()
+                emp.counter_assigning_officer=self.employee
+                emp.save()
+            else:
+                self.employee.reporting_officer = None
+                self.employee.counter_assigning_officer = None
+                self.employee.save()
+        # Handle case when the position is deactivated
+        elif not self.primary_position :
+            if self.employee.position == self.position:
+                self.employee.position = None
+                self.employee.save()
+        if not self.active and  not self.primary_position :
+            if self.employee.position == self.position:
+                self.employee.position = None
+                self.employee.position.open_position=True
+                self.employee.position.open_position.save()
+                self.employee.save()
+
+        # Calculate months in position
+        if self.assignment_start and self.assignment_start <= datetime.now().date():
             delta = relativedelta(datetime.now().date(), self.assignment_start)
-            # Calculate the difference in months
             self.months_in_position = delta.years * 12 + delta.months
         else:
             self.months_in_position = 0
+
         super(PositionAssignment, self).save(*args, **kwargs)
+
     def __str__(self):
         return f"Position Assignment for {self.employee} - {self.position}"
+@receiver(pre_delete, sender=PositionAssignment)
+def open_position_before_delete(sender, instance, **kwargs):
+    """
+    Signal to open the position before deleting a PositionAssignment instance.
+    """
+    if instance.active and instance.primary_position:
+        # Open the position if the assignment is active and primary
+        instance.position.open_position = True
+        instance.position.save()
 class JobLevelValidity(models.Model):
     job_level=models.OneToOneField(JobLevel, on_delete=models.PROTECT)
     validity=models.IntegerField()

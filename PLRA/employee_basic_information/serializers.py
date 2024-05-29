@@ -1,4 +1,5 @@
 
+import json
 from django.forms.models import model_to_dict
 from rest_framework import serializers, permissions
 from django.contrib.auth import get_user_model
@@ -20,12 +21,14 @@ class BaseSerializer(serializers.ModelSerializer):
         except KeyError:
             raise serializers.ValidationError(f"{model_name} is not a valid model name.")
         instance = model(**validated_data)
+        instance.clean()
         instance.save()
         return instance
 
     def update(self, instance, validated_data):
         for key, value in validated_data.items():
             setattr(instance, key, value)
+        instance.clean()
         instance.save()
         return instance
 class NotificationSerializer(serializers.ModelSerializer):
@@ -71,43 +74,34 @@ class PositionSerializer(BaseSerializer):
         # ['p_rec_id','no_of_position','open_position','job','location','wing','sub_wing','position_type','position_desc','position_id']
 # class UserSerializers(BaseSerializer):
 class UserSerializers(serializers.ModelSerializer):
-    # history = serializers.SerializerMethodField()
-   
+    # def to_internal_value(self, data):
+    #     print("Original data:", data)
+    #     if 'groups' in data:
+    #         try:
+    #             # Attempt to parse the string as a JSON list
+    #             groups_list = json.loads(data['groups'])
+    #             # Convert all items to integers
+    #             data['groups'] = [int(group) for group in groups_list]
+    #         except (ValueError, TypeError):
+    #             raise serializers.ValidationError({
+    #                 'groups': 'Invalid format for groups, expected a JSON array of integers.'
+    #             })
+       
+    #     processed_data = super().to_internal_value(data)
+    #     print("Processed data:", processed_data)
+    #     return processed_data
+ 
     class Meta:
         model = User
+        fields = '__all__'
 #         fields = ['employee_image','employee_domicile_image','employee_cnic_image','id','employee_no','cnic','first_name','last_name','father_name','passport_number','domicile_district','phoneNumber','title','date_of_joining','service_duration','center','position','reporting_officer','counter_assigning_officer','is_staff','is_active','is_superuser',
 # ]
-        fields = '__all__'
-        
 
 class Employee_TitleSerializer(BaseSerializer):
     class Meta:
         model = Employee_Title
         fields = '__all__'
-class User_list_Serializers(BaseSerializer):
-    # history = serializers.SerializerMethodField()
-    
-    reporting_officer=EmployeeSerializers()
-    counter_assigning_officer=EmployeeSerializers()
-    center=CenterSerializer()
-    position=PositionSerializer()
-    title=Employee_TitleSerializer()
-    class Meta:
-        ref_name = 'User_list_Serializers'
-        model = User
-        fields = '__all__'
-        # fields = ['id','employee_no','cnic','first_name','last_name','father_name','passport_number','domicile_district','phoneNumber','title','date_of_joining','service_duration','center','position','reporting_officer','counter_assigning_officer','is_staff','is_active','is_superuser',
-# ]
 
-    # def get_history(self, obj):
-    #     history_records = obj.history.all()
-    #     serialized_history = []
-
-    #     for record in history_records:
-    #         serialized_record = model_to_dict(record)
-    #         serialized_history.append(serialized_record)
-
-    #     return serialized_history
 
 
 class LoginSerializers(serializers.Serializer):
@@ -154,7 +148,7 @@ class JobSerializer(BaseSerializer):
         model = Job
         fields = ['j_rec_id','ppg_level','job_title','job_abbrivation','no_of_seniority_level']
         
-        
+  
 
 
 class DistrictSerializer(BaseSerializer):
@@ -238,16 +232,7 @@ class ApprovalMatrixSerializer(BaseSerializer):
     class Meta:
         model = ApprovalMatrix
         fields = '__all__'
-class Position_list_Serializer(BaseSerializer): 
-    job= JobSerializer()
-    location= CenterSerializer()
-    wing= WingSerializer()
-    sub_wing= Sub_WingSerializer()
-    position_type= PositionTypeSerializer()
-    class Meta:
-        ref_name = 'PositionList'
-        model = Position
-        fields = '__all__'
+
 class Center_list_Serializer(BaseSerializer):
     region=RegionSerializer()
     division=DivisionSerializer()
@@ -285,11 +270,26 @@ class JobLevel_list_Serializer(BaseSerializer):
         
 class JobLevelAssignment_list_Serializer(BaseSerializer):
     employee=UserSerializers()
-    job_level=JobLevelSerializer()
+    job_level=JobLevel_list_Serializer()
     class Meta:
         ref_name = 'JobLevelAssignment_list_Serializer'
         model = JobLevelAssignment
         fields = '__all__'
+class JobListSerializer(BaseSerializer):
+    ppg_level=Ppg_Level_SetupSerializer()
+    class Meta:
+        model = Job
+        fields = ['j_rec_id','ppg_level','job_title','job_abbrivation','no_of_seniority_level']     
+class Position_list_Serializer(BaseSerializer):
+    job=JobListSerializer()
+    location=Center_list_Serializer()
+    wing=WingSerializer()
+    sub_wing=Sub_WingSerializer()
+    position_type=PositionTypeSerializer()
+    class Meta:
+        ref_name = 'Position_list_Serializer'
+        model = Position
+        fields = "__all__"
         
 class PositionAssignment_level_Serializer(BaseSerializer):
     employee=UserSerializers()
@@ -318,16 +318,6 @@ class JobLevelValidity_level_Serializer(BaseSerializer):
         ref_name = 'JobLevelValidity_level_Serializer'
         model = JobLevelValidity
         fields = '__all__'
-class Position_list_Serializer(BaseSerializer):
-    job=JobSerializer()
-    location=CenterSerializer()
-    wing=WingSerializer()
-    sub_wing=Sub_WingSerializer()
-    position_type=PositionTypeSerializer()
-    class Meta:
-        ref_name = 'Position_list_Serializer'
-        model = Position
-        fields = "__all__"
 class Approval_list_MatrixSerializer(BaseSerializer):
     position=Position_list_Serializer()
     reporting_position=Position_list_Serializer()
@@ -376,3 +366,50 @@ class RecentActionSerializer(serializers.ModelSerializer):
 
         # Combine the frontend last visit link with the default link
         return f"{obj.get_change_message()} | {frontend_last_visit_link}"
+
+
+class User_list_Serializers(BaseSerializer):
+    # history = serializers.SerializerMethodField()
+    
+    reporting_officer=EmployeeSerializers()
+    counter_assigning_officer=EmployeeSerializers()
+    center=CenterSerializer()
+    position=Position_list_Serializer()
+    title=Employee_TitleSerializer()
+    groups=GroupSerializer(many=True)
+    class Meta:
+        ref_name = 'User_list_Serializers'
+        model = User
+        fields = '__all__'
+        # fields = ['id','employee_no','cnic','first_name','last_name','father_name','passport_number','domicile_district','phoneNumber','title','date_of_joining','service_duration','center','position','reporting_officer','counter_assigning_officer','is_staff','is_active','is_superuser',
+# ]
+
+    # def get_history(self, obj):
+    #     history_records = obj.history.all()
+    #     serialized_history = []
+
+    #     for record in history_records:
+    #         serialized_record = model_to_dict(record)
+    #         serialized_history.append(serialized_record)
+
+    #     return serialized_history
+from rest_framework import serializers
+
+class CountWithNameSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    name = serializers.CharField()
+
+class ProcessCountsSerializer(serializers.Serializer):
+    leave_count = CountWithNameSerializer()
+    termination_count = CountWithNameSerializer()
+    resignation_count = CountWithNameSerializer()
+    elevation_count = CountWithNameSerializer()
+    progression_count = CountWithNameSerializer()
+    administrative_transfer_count = CountWithNameSerializer()
+    e_transfer_count = CountWithNameSerializer()
+    annual_assessment_count = CountWithNameSerializer()
+    noc_count=CountWithNameSerializer()
+
+class EmployeeMiniDashboardSerializer(serializers.Serializer):
+    employee_id = User_list_Serializers() # Adjust based on your model structure
+    process_counts = ProcessCountsSerializer()

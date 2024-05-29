@@ -180,8 +180,8 @@ const New_Leave_Approvals = () => {
             toast.success("Approvals saved successfully!");
 
             setTimeout(() => {
-                navigate('/employee/setup/Leave_Approvals');
-            }, 3000);
+                navigate('/employee/setup/Leave_Approval_Setup');
+            }, 500);
 
 
         }

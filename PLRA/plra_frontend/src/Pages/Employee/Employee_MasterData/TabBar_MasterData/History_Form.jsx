@@ -1,27 +1,29 @@
-import React, { Fragment, useState } from 'react'
-import { Box, Typography, Grid, Switch, Dialog } from '@mui/material'
-import { Btn, InputField, Multi_Dropdown, CheckBoxField, HeadingBar, FileInput } from '../../../../Components'
+import React, { useEffect, useState } from 'react'
+import { Box, Typography, Grid, Switch } from '@mui/material'
+import { Btn, InputField, Multi_Dropdown, HeadingBar, DialogBox } from '../../../../Components'
 import Breadcrumb from '../../../../Components/Common/BreadCrumb'
 import EmployeeFormDashboard from '../EmployeeDashboard/EmployeeFormDashboard.jsx'
 import { useTheme } from '@emotion/react'
 import { JobDistrictHeader } from "../../../../Data/Setup_Data/Setup_Data";
 import { useGetJobDistrictQuery, useUpdateEmployementHistoryMutation, useGetEmployementHistoryQuery, useDeleteEmployementHistoryMutation } from '../../../../Features/API/API'
 import { toast } from 'react-toastify'
-import { usePostEducationMutation, usePostEmployementHistoryMutation } from '../../../../Features/API/API'
+import { usePostEmployementHistoryMutation } from '../../../../Features/API/API'
 import { useParams } from 'react-router-dom'
-import { Warning } from '../../../../Assets/Icons/index.jsx'
+import { showToast } from '../../../../Components/shared/Toast_Card.jsx'
+import StatusCodeHandler from '../../../../Components/Common/StatusCodeHandler.jsx'
 
 
 
 const History_Form = () => {
     const theme = useTheme();
+    const [formErrors, setFormErrors] = useState({});
     const { id } = useParams();
     const [activeBoxIndex, setActiveBoxIndex] = useState(0);
     const [isRowSelected, setIsRowSelected] = useState(false);
     const [formData, setFormData] = useState({
-        organization_name: '', position_held: '', employment_start_date: '', employment_end_date: '',
-        government_job: false, leaving_reason: '', noc_from_previous_employment: '', organization_contact_number: '',
-        organization_address: '', job_district: '', employee: id
+        organization_name: null, position_held: null, employment_start_date: null, employment_end_date: null,
+        government_job: false, leaving_reason: null, noc_from_previous_employment: null, organization_contact_number: null,
+        organization_address: null, job_district: null, employee: id
     });
     const [selectRowID, setSelectedRowID] = useState(null);
     const [districtName, setdistrictName] = useState("");
@@ -32,15 +34,18 @@ const History_Form = () => {
     const [deleteDialog, setDeleteDialog] = useState(false);
 
 
-
     //Queries
-    const { data: employeeJobDistrict, isLoading: employee_loading, isError: employee_refreshError, error: employee_queryError, employee_refetch } = useGetJobDistrictQuery();
+    const { data: employeeJobDistrict, isLoading: employee_loading, isError: employee_refreshError, error: employee_queryError, refetch: employee_refetch } = useGetJobDistrictQuery();
     const { data: employeeHistory, isLoading: employeeHistoryloading, isError: employeeHistoryrefreshError, error: employeeHistoryqueryError, refetch: employeeHistoryrefetch } = useGetEmployementHistoryQuery(id);
     const [updateHistoryData] = useUpdateEmployementHistoryMutation();
     const [postHistory] = usePostEmployementHistoryMutation();
     const [deleteEmploymentHistory] = useDeleteEmployementHistoryMutation();
 
     //Functions
+    useEffect(() => {
+        employeeHistoryrefetch();
+    }, []);
+
     //Employee Dialog Click Listeners
     const jobDistrictClickHandler = (selectedRow) => {
         setdistrictName(selectedRow.district_name)
@@ -74,6 +79,7 @@ const History_Form = () => {
     };
 
     const resetForm = () => {
+        setFormErrors({});
         setSelectedRowID(null);
         setIsRowSelected(false);
         setActiveBoxIndex(null);
@@ -90,95 +96,61 @@ const History_Form = () => {
         if (isRowSelected) {
             try {
                 const res = await updateHistoryData({ selectRowID, updateEmployeeHistory: formData });
-                if (res.error) {
-                    if (res.error.status === 400) { toast.error("Record not updated.", { position: "top-center", autoClose: 3000 }) }
-                    else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
+                if (res?.error && res.error.status) {
+                    if (res?.error?.status === 422 && res?.error?.data?.code) {
+                        return (showToast(`${res?.error?.data?.detail}`, "error"));
+                    }
+                    if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+                        return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+                    }
+                    setFormErrors(res?.error)
+                    return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
                 } else {
-                    toast.success("Record updated successfully.", { position: "top-center", autoClose: 3000 });
-
-
+                    showToast(`Record updated Successfully`, "success");
                     employeeHistoryrefetch();
                     resetForm();
                 }
             }
             catch (err) {
-                console.log(err);
+                return showToast(`${err.message}`, "error");
             }
         }
         else {
-            if (formData.organization_name == '' || formData.position_held == '' || formData.employment_start_date == '' || formData.employment_end_date == '' || formData.education_end_date == '' ||
-                formData.leaving_reason == '' || formData.organization_contact_number == '' || formData.organization_address == '' || formData.job_district == ''
-            ) {
-                toast.error("Mandatory field's should not be empty.", { position: "top-center", autoClose: 3000 })
-                console.log("Miss");
-            }
-            else {
-                try {
+            try {
 
-                    const res = await postHistory(formData);
-                    if (res.error) {
-                        if (res.error.status === 400) { toast.error("Record not updated.", { position: "top-center", autoClose: 3000 }) }
-                        else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
-                    } else {
-                        employeeHistoryrefetch();
-                        toast.success("Record created.", { position: "top-center", autoClose: 3000 });
-                        resetForm();
+                const res = await postHistory(formData);
+                if (res?.error && res.error.status) {
+                    if (res?.error?.status === 422 && res?.error?.data?.code) {
+                        return (showToast(`${res?.error?.data?.detail}`, "error"));
                     }
+                    if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+                        return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+                    }
+                    setFormErrors(res?.error)
+                    return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+                } else {
+                    employeeHistoryrefetch();
+                    showToast(`Record created Successfully`, "success");
+                    resetForm();
                 }
-
-
-
-
-                catch (err) {
-                    console.log(err);
-                }
-
             }
-
+            catch (err) {
+                return showToast(`${err.message}`, "error");
+            }
         }
     }
-
-    // const handleUpdateData = async (e) => {
-    //     try {
-    //         if (isRowSelected) {
-    //             const res = await updateHistoryData({ selectRowID, updateEmployeeHistory: formData });
-    //             if (res.error) {
-    //                 if (res.error.status === 400) { toast.error("Record not updated.", { position: "top-center", autoClose: 3000 }) }
-    //                 else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
-    //             } else {
-    //                 toast.success("Record updated successfully.", { position: "top-center", autoClose: 3000 });
-    //                 setFormData({
-    //                     organization_name: '', position_held: '', employment_start_date: '', employment_end_date: '',
-    //                     government_job: '', leaving_reason: '', noc_from_previous_employment: '', organization_contact_number: '',
-    //                     organization_address: '', job_district: '', employee: id
-    //                 })
-    //                 employeeHistoryrefetch();
-    //                 setIsRowSelected(false)
-    //             }
-    //         }
-
-    //         else {
-    //             toast.error("Record not selected", { position: "top-center", autoClose: 3000 })
-    //         }
-
-    //     }
-    //     catch (err) {
-    //         console.log(err);
-    //     }
-    // }
 
     const handleDeleteData = async (e) => {
         try {
             // call api
             const res = await deleteEmploymentHistory({ selectRowID });
-            // error handling 
-            if (res.error) {
-                if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-                else if (res.error.status === 409) { return toast.error("Record deletion failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-                else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+            // error handling
+            if (res?.error && res.error.status) {
+                setFormErrors(res?.error)
+                return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
             }
-            // success call 
-            toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 3000 });
+            // success call
+            showToast(`Record Deleted Successfully`, "success");
             setFormData({
                 organization_name: '', position_held: '', employment_start_date: '', employment_end_date: '',
                 government_job: '', leaving_reason: '', noc_from_previous_employment: '', organization_contact_number: '',
@@ -188,8 +160,7 @@ const History_Form = () => {
             setIsRowSelected(false)
 
         } catch (err) {
-            console.error('Error Deleting Record:', err);
-            toast.error(err.message, { position: "top-center", autoClose: 3000 });
+            return showToast(`${err.message}`, "error");
         }
     }
 
@@ -202,6 +173,16 @@ const History_Form = () => {
                     <Btn type="new" onClick={(e) => (resetForm())} />
                     <Btn type={disableFields ? 'edit' : 'save'} onClick={disableFields ? () => setfieldsDisable(false) : handlePostData} />
                     {isRowSelected ? <Btn type="delete" onClick={() => setDeleteDialog(true)} /> : null}
+                    {
+                        deleteDialog ?
+                            <DialogBox
+                                open={deleteDialog}
+                                onClose={() => setDeleteDialog(false)}
+                                closeClick={() => setDeleteDialog(false)}
+                                sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+                                title={"Are you sure you want to delete the record?"}
+                            /> : ''
+                    }
 
                 </Box>
             </Box>
@@ -229,14 +210,14 @@ const History_Form = () => {
 
 
                             <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: "column", gap: 2 }}>
-                                <InputField name="organization_name" mandatory={true} label="Firm Name" disabled={disableFields} placeholder="Enter Organization Name" type="text" value={formData.organization_name} onChange={handleChange} fullWidth />
-                                <InputField name="position_held" label="Position Held" disabled={disableFields} mandatory={true} placeholder="Enter Position Held" type="text" value={formData.position_held} onChange={handleChange} fullWidth />
-                                <InputField name="organization_contact_number" disabled={disableFields} label="Firm Contact" placeholder="Enter Organization Contact Number" type="text" value={formData.organization_contact_number} onChange={handleChange} fullWidth />
-                                <InputField name="organization_address" disabled={disableFields} label="Firm Address" mandatory={true} placeholder="Enter Organization Address" type="text" value={formData.organization_address} onChange={handleChange} fullWidth />
+                                <InputField name="organization_name" mandatory={true} label="Organization" disabled={disableFields} placeholder="Enter Organization Name" type="text" value={formData.organization_name} onChange={handleChange} fullWidth error={formErrors?.data?.organization_name} />
+                                <InputField name="position_held" label="Position Held" disabled={disableFields} mandatory={true} placeholder="Enter Position Held" type="text" value={formData.position_held} onChange={handleChange} fullWidth error={formErrors?.data?.position_held} />
+                                <InputField name="organization_contact_number" disabled={disableFields} label="Contact" placeholder="Enter Organization Contact Number" type="text" value={formData.organization_contact_number} onChange={handleChange} fullWidth error={formErrors?.data?.organization_contact_number} />
+                                <InputField name="organization_address" disabled={disableFields} label="Address" mandatory={true} placeholder="Enter Organization Address" type="text" value={formData.organization_address} onChange={handleChange} fullWidth error={formErrors?.data?.organization_address} />
                                 <Grid container columnSpacing={2}>
                                     <Grid item xs={6} sx={{ display: 'flex', flexDirection: "row", alignItems: "center" }} >
                                         <Box className="inputBox" >
-                                            <Typography sx={{ display: 'flex', marginTop: "3.3px", mr: "11px" }} >Government Job:</Typography>
+                                            <Typography sx={{ display: 'flex', marginTop: "3.3px", mr: "11px", fontSize: '14px' }} >Government Job:</Typography>
                                             <Switch sx={{ ml: 3.7 }} size="small" disabled={disableFields} checked={formData.government_job} onClick={(e) => { setFormData((prevData) => ({ ...prevData, government_job: !formData.government_job })); }} name='active' />
                                         </Box>
                                     </Grid>
@@ -245,14 +226,13 @@ const History_Form = () => {
                             <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: "column", gap: 2 }}>
                                 {employeeJobDistrict && employeeJobDistrict.results ?
                                     <div>
-                                        <InputField name="job_district " label="Job District " mandatory={true} disabled={disableFields} placeholder="Enter Job District " type="text" value={districtName} isShowIcon={true} onChange={handleChange} fullWidth onClick={() => { setDistrictDialog(true) }} />
+                                        <InputField name="job_district " label="Job District " mandatory={true} disabled={disableFields} placeholder="Enter Job District " type="text" value={districtName} isShowIcon={true} onChange={handleChange} fullWidth onClick={() => { setDistrictDialog(true) }} error={formErrors?.data?.job_district} />
                                         <Multi_Dropdown isOpen={districtDialog} onClose={() => setDistrictDialog(false)} MinimumWidth={'600px'} tableRows={employeeJobDistrict.results} tableHeader={JobDistrictHeader} onSelect={jobDistrictClickHandler} RowFilterWith='id' />
                                     </div> :
-                                    <InputField name="job_district " label="Job District " disabled={disableFields} placeholder="Enter Job District " type="text" value={formData.job_district.district_name} isShowIcon={true} onChange={handleChange} fullWidth />}
-                                <InputField name="employment_start_date" label=" Start Date" disabled={disableFields} mandatory={true} placeholder="Enter Employment Start Date" type="date" value={formData.employment_start_date} onChange={handleChange} fullWidth />
-                                <InputField name="employment_end_date" label="End Date" disabled={disableFields} mandatory={true} placeholder="Enter Employment End Date" type="date" value={formData.employment_end_date} onChange={handleChange} fullWidth />
-                                <InputField name="leaving_reason" label="Leaving Reason" disabled={disableFields} mandatory={true} placeholder="Enter Leaving Reason" type="text" value={formData.leaving_reason} onChange={handleChange} fullWidth />
-
+                                    <InputField name="job_district " label="Job District" disabled={disableFields} placeholder="Enter Job District " type="text" value={formData.job_district?.district_name} isShowIcon={true} onChange={handleChange} fullWidth error={formErrors?.data?.job_district} />}
+                                <InputField name="employment_start_date" label=" Start Date" disabled={disableFields} mandatory={true} placeholder="Enter Employment Start Date" type="date" value={formData.employment_start_date} onChange={handleChange} fullWidth error={formErrors?.data?.employment_start_date} />
+                                <InputField name="employment_end_date" label="End Date" disabled={disableFields} mandatory={true} placeholder="Enter Employment End Date" type="date" value={formData.employment_end_date} onChange={handleChange} fullWidth error={formErrors?.data?.employment_end_date} />
+                                <InputField name="leaving_reason" label="Leaving Reason" disabled={disableFields} mandatory={true} placeholder="Enter Leaving Reason" type="text" value={formData.leaving_reason} onChange={handleChange} fullWidth error={formErrors?.data?.leaving_reason} />
                             </Grid>
                         </Grid>
                     </Grid>
@@ -261,19 +241,10 @@ const History_Form = () => {
                 </Grid>
 
                 <Grid item xs={12} md={3}>
-                    <EmployeeFormDashboard />
+                    <EmployeeFormDashboard userId={id} title="Processess" />
+
                 </Grid>
             </Grid>
-            <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-                <Box sx={{ minWidth: '400px', p: 2 }}>
-                    <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-                        <Btn type="sure" onClick={() => { handleDeleteData(); setDeleteDialog(false); }} outerStyle={{ border: '2px solid ${theme.palette.primary.light}', borderRadius: "8px" }} />
-                        <Btn type="close" onClick={() => setDeleteDialog(false)} outerStyle={{ border: '2px solid ${theme.palette.error.light}', borderRadius: "8px" }} />
-                    </Box>
-                </Box>
-            </Dialog>
-
         </div >
 
 

@@ -7,6 +7,7 @@ import {
   Btn,
   Multi_Dropdown,
   InputField,
+  DialogBox,
 } from "../../../Components/index.js";
 import {
   useAdjustableDependecy_leaveDependency_trueQuery,
@@ -17,9 +18,12 @@ import {
   useUpdateLeaveDependableDetailsMutation,
 } from "../../../Features/API/SetupApi";
 import { toast } from "react-toastify";
+import { showToast } from "../../../Components/shared/Toast_Card.jsx";
+import StatusCodeHandler from "../../../Components/Common/StatusCodeHandler.jsx";
 
 function LeaveDependency() {
 
+  const [formErrors, setFormErrors] = useState({});
 
   //States
   const theme = useTheme();
@@ -77,54 +81,37 @@ function LeaveDependency() {
 
   async function handleSaveData(e) {
     e.preventDefault();
-
-    if (formData.leave_with_adjustable === "" || formData.depends_upon === "" || formData.priority === "") {
-      toast.error(`Mandatory fields should not be empty.`, {
-        position: "top-center",
-        autoClose: 3000,
-      });
-    }
-    else {
-      try {
-        const res = await postLeaveDependableDetails(formData);
-        if (res.error) {
-          if (res.error.status === 500) {
-            return toast.error("Server is not working", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          } else if (res.error.status === 400) {
-            return toast.error("Record alredy exist.", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          } else {
-            return toast.error("Unexpected Error Occurred", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          }
+    try {
+      const res = await postLeaveDependableDetails(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-        toast.success("Record saved successfully.", {
-          position: "top-center",
-          autoClose: 1000,
-        });
-        setAdjustable("");
-        setLeaveType("");
-        setPriorityValue("");
-        setFormData({
-          leave_with_adjustable: "",
-          depends_upon: "",
-          priority: "",
-        });
-        leaveDependableRefresh();
-      } catch (error) {
-        console.log("errorCatch: ", error);
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record created Successfully`, "success");
+      setFormErrors({});
+      setAdjustable("");
+      setLeaveType("");
+      setPriorityValue("");
+      setFormData({
+        leave_with_adjustable: "",
+        depends_upon: "",
+        priority: "",
+      });
+      leaveDependableRefresh();
+    } catch (error) {
+      showToast(`${err.message}`, "error");
     }
+
   }
 
   function hanldleRest() {
+    setFormErrors({});
     setIsRowSelected(false);
     setIsRowSelectedID("")
     setAdjustable("");
@@ -141,29 +128,13 @@ function LeaveDependency() {
 
     try {
       const res = await deleteLeaveDependableDetails(isRowSelectedID);
-      if (res.error) {
-        if (res.error.status === 500) {
-          return toast.error("Server is not working", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record deletion failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
       // success call
-      toast.success("Record delete successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      showToast(`Record Deleted Successfully`, "success");
+      setFormErrors({});
       setIsRowSelected(false);
       setAdjustable("");
       setLeaveType("");
@@ -175,35 +146,25 @@ function LeaveDependency() {
       });
       leaveDependableRefresh();
     } catch (error) {
-      console.log(error);
+      return showToast(`${err.message}`, "error");
     }
   }
 
   const handleUpdate = async () => {
     try {
       const res = await updateLeaveDependableDetails({ id: isRowSelectedID, formData });
-      if (res.error) {
-        if (res.error.status === 400) {
-          return toast.error("ID already exists.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record updation failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      toast.success("Record Updated successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      showToast(`Record updated Successfully`, "success");
+      setFormErrors({});
       setIsRowSelected(false);
       setIsRowSelectedID('')
       setFormData({
@@ -215,7 +176,7 @@ function LeaveDependency() {
       setLeaveType('')
       leaveDependableRefresh()
     } catch (err) {
-      console.error("Error updating :", err);
+      showToast(`${err.message}`, "error");
     }
   };
 
@@ -239,10 +200,7 @@ function LeaveDependency() {
       setdeleteDialog(true)
     }
     else {
-      toast.error("Record Not Selected", {
-        position: 'top-center',
-        autoClose: '3000'
-      })
+      showToast(`Record Not Selected`, "error");
     }
   };
 
@@ -316,53 +274,42 @@ function LeaveDependency() {
   // Main 
   return (
     <Fragment>
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          mb: 4,
-          gap: 2,
-          alignItems: "center",
-          mt: 0.8,
-        }}
-      >
-        <Typography
-          variant="h4"
-          sx={{
-            width: "100%",
-            color: theme.palette.primary.main,
-            fontWeight: "500",
-            fontSize: "20px",
-          }}
-        >
+      <Box sx={{ width: "100%", display: "flex", mb: 4, gap: 2, alignItems: "center", mt: 0.8, }}  >
+        <Typography variant="h4" sx={{ width: "100%", color: theme.palette.primary.main, fontWeight: "500", fontSize: "20px", }} >
           Leave Adjustable Dependency
         </Typography>
-        <Btn
-          type="reset"
-          onClick={hanldleRest}
-          outerStyle={{
-            width: 1,
-            display: "flex",
-            justifyContent: "end",
-            marginRight: 1,
-          }}
-        />
+        <Btn type="reset" onClick={hanldleRest} outerStyle={{ width: 1, display: "flex", justifyContent: "end", marginRight: 1, }} />
         <Btn type='save' onClick={
           isRowSelected ? () => setUpdateDialog(true)
             : handleSaveData
         }
         />
+        {
+          updateDialog ?
+            <DialogBox
+              open={updateDialog}
+              onClose={() => setUpdateDialog(false)}
+              closeClick={() => setUpdateDialog(false)}
+              sureClick={() => { handleUpdate(); setUpdateDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type="delete" onClick={handleDeleteDialog} />
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setdeleteDialog(false)}
+              closeClick={() => setdeleteDialog(false)}
+              sureClick={() => { handleDeleteData(); setdeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
 
       <Box sx={{ margin: "10px 0" }}>
         <Grid container spacing={{ xs: 1, md: 4 }}>
-          <Grid
-            item
-            xs={12}
-            md={6}
-            sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-          >
+          <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 1 }} >
             {leaveDependcyData && leaveDependcyData.results ? (
               <div>
                 <InputField
@@ -376,6 +323,7 @@ function LeaveDependency() {
                   onClick={() => {
                     setIsCenterDialog(true);
                   }}
+                  error={formErrors?.data?.leave_with_adjustable}
                 />
                 <Multi_Dropdown
                   isOpen={centerDialog}
@@ -395,6 +343,7 @@ function LeaveDependency() {
                 type="text"
                 isShowIcon={true}
                 value={leave_with_adjustable_Name}
+                error={formErrors?.data?.leave_with_adjustable}
               />
             )}
             <InputField
@@ -404,6 +353,8 @@ function LeaveDependency() {
               mandatory={true}
               value={formData.priority}
               onChange={handlePriorityChange}
+              error={formErrors?.data?.priority}
+
             // onClick={handlePriority}
             />
           </Grid>
@@ -426,6 +377,7 @@ function LeaveDependency() {
                   onClick={() => {
                     setIsLeaveTypeDataDialog(true);
                   }}
+                  error={formErrors?.data?.depends_upon}
                 />
                 <Multi_Dropdown
                   isOpen={leaveTypeDataDialog}
@@ -445,6 +397,8 @@ function LeaveDependency() {
                 type="text"
                 isShowIcon={true}
                 value={depends_upon_Name}
+                error={formErrors?.data?.depends_upon}
+
               />
             )}
           </Grid>
@@ -467,102 +421,6 @@ function LeaveDependency() {
         />
       )}
 
-
-
-      <Dialog
-        open={updateDialog}
-        onClose={() => setUpdateDialog(false)}
-        sx={{ m: "auto" }}
-      >
-        <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Warning />
-            Do you want to update that record.
-          </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleUpdate();
-                setUpdateDialog(false);
-              }}
-              iconStyle={{ color: theme.palette.primary.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setUpdateDialog(false)}
-              iconStyle={{ color: theme.palette.error.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Box>
-      </Dialog>
-
-      {/* Delete */}
-      <Dialog
-        open={deleteDialog}
-        onClose={() => setdeleteDialog(false)}
-        sx={{ m: "auto" }}
-      >
-        <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Warning />
-            Are you sure to delete record.
-          </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleDeleteData();
-                setdeleteDialog(false);
-              }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setDeleteDialog(false)}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Box>
-      </Dialog>
     </Fragment>
   );
 }

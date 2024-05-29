@@ -66,19 +66,21 @@ class LeaveDependency(models.Model):
         # Check if the combination of leave_with_adjustable and depends_upon already exists
         existing_dependency = LeaveDependency.objects.filter(
             leave_with_adjustable=self.leave_with_adjustable,
-            depends_upon=self.depends_upon,
-        ).exists()
+            depends_upon=self.depends_upon
+        ).exclude(pk=self.pk).exists()
         if existing_dependency:
             raise ValidationError("This combination already exists in the leave dependency table.")
+        
         existing_p = LeaveDependency.objects.filter(
             priority=self.priority
-        ).exists()
+        ).exclude(pk=self.pk).exists()
         existing_a = LeaveDependency.objects.filter(
-            leave_with_adjustable=self.leave_with_adjustable,
-        ).exists()
+            leave_with_adjustable=self.leave_with_adjustable
+        ).exclude(pk=self.pk).exists()
         if existing_p and existing_a:
             raise ValidationError(f"This {self.priority} already exists in the leave dependency table.")
-        super().save(*args, **kwargs)
+        
+        super().clean(*args, **kwargs)
     class Meta:
         unique_together = ('leave_with_adjustable', 'depends_upon')
     def __str__(self):
@@ -111,7 +113,7 @@ class LeaveCount(models.Model):
     
     
 class LeaveApprovals(models.Model):
-    leave_count=models.ForeignKey(LeaveCount, on_delete=models.PROTECT)   
+    leave_count=models.ForeignKey(LeaveCount, on_delete=models.CASCADE)   
     approving_authority = models.CharField(
         max_length=20,
         choices=[
@@ -124,6 +126,8 @@ class LeaveApprovals(models.Model):
     )
     order=models.PositiveSmallIntegerField()
     approving_time=models.PositiveIntegerField()
+    class Meta:
+        verbose_name = 'Leave Approval Setup'
     def __str__(self):
         return f"{self.leave_count} approved by {self.approving_authority} in order {self.order} and in {self.approving_time} days"
     
@@ -140,6 +144,9 @@ class Approvals(models.Model):
             ('Pending', 'Pending'),
             ('Approved', 'Approved'),
             ('Rejected', 'Rejected'),
+            ("Withdraw", "Withdraw"),
+
+            ('-', '-'),
         ],default='Pending')
     comments=models.TextField(blank=True,null=True)
     def __str__(self):
@@ -155,12 +162,14 @@ class Approvals(models.Model):
                     next_approval.visible=True
                     next_approval.save()
                 else:
-                    related_leave=LeaveApply.objects.get(leave_request_id=self.leave.leave_request_id)
+                    related_leave=LeaveApply.objects.filter(leave_request_id=self.leave.leave_request_id).first()
                     related_leave.status='Approved'
                     related_leave.save()
                     realedted_super_approval=SuperApprovals.objects.filter(leave=self.leave).first()
                     if realedted_super_approval:
                         realedted_super_approval.visible=False
+                        realedted_super_approval.status="-"
+                        realedted_super_approval.ready_for_position_assignment=True
                         realedted_super_approval.save()
             if self.status=='Rejected':
                 self.visible=False
@@ -168,7 +177,13 @@ class Approvals(models.Model):
                 self.system_approval=False
                 realedted_super_approval=SuperApprovals.objects.get(leave=self.leave)
                 realedted_super_approval.visible=False
+                realedted_super_approval.status="-"
                 realedted_super_approval.save()
+                next_approvals=Approvals.objects.filter(leave=self.leave, order__gt=self.order)
+                if next_approvals:
+                    for next_approval in next_approvals:
+                        next_approval.status="-"
+                        next_approval.save()
                 related_leave=LeaveApply.objects.get(leave_request_id=self.leave.leave_request_id)
                 related_leave.status='Rejected'
                 related_leave.save()
@@ -183,12 +198,15 @@ class SuperApprovals(models.Model):
     approving_authority=models.ForeignKey(Employee, on_delete=models.PROTECT)
     position_start_date=models.DateField(blank=True,null=True)
     position_end_date=models.DateField(blank=True,null=True)
+    ready_for_position_assignment=models.BooleanField(default=False)
     status_date=models.DateField(blank=True,null=True)
     status=models.CharField( max_length=50,
         choices=[
-            ('Pending', 'Pending'),
+            ('Pending', 'Pending'), 
             ('Approved', 'Approved'),
             ('Rejected', 'Rejected'),
+            ("Withdraw", "Withdraw"),
+            ('-', '-'),
         ],default='Pending')
     additional_position_assignment= models.ForeignKey(Employee, related_name='additional_position_assignment', on_delete=models.PROTECT,blank=True,null=True)
     comments=models.TextField(blank=True,null=True)
@@ -200,18 +218,23 @@ class SuperApprovals(models.Model):
         try:
             if self.status=='Approved':
                 self.visible=False
+                self.ready_for_position_assignment=True
                 self.status_date=datetime.now().date()
                 related_leave=LeaveApply.objects.get(leave_request_id=self.leave.leave_request_id)
                 related_leave.status='Approved'
                 related_leave.save()
-                res=PositionAssignment.objects.filter(employee=self.additional_position_assignment,position=self.leave.employee.position)
-                if not res:
-                    PositionAssignment.objects.create(employee=self.additional_position_assignment,position=self.leave.employee.position,assignment_start=self.position_start_date,assignment_end=self.position_end_date,primary_position=False,active=True)
                 related_approvals_list=Approvals.objects.filter(leave=self.leave.leave_request_id)
                 for approval in related_approvals_list:
                     approval.visible=False
+                    approval.status="-"
                     approval.system_approval=False
                     approval.save()
+            if self.additional_position_assignment:
+                res=PositionAssignment.objects.filter(employee=self.additional_position_assignment,position=self.leave.employee.position)
+                if not res:
+                    PositionAssignment.objects.create(employee=self.additional_position_assignment,position=self.leave.employee.position,assignment_start=self.position_start_date,assignment_end=self.position_end_date,primary_position=False,active=True)
+                    related_job_level=JobLevelAssignment.objects.filter(employee=self.leave.employee.position,job=self.leave.employee.position.job,active=True).first()
+                    JobLevelAssignment.objects.create(employee=self.additional_position_assignment,job_level=related_job_level,assignment_start=self.position_start_date,assignment_end=self.position_end_date,active=True)
             elif self.status=='Rejected':
                 self.visible=False
                 self.status_date=datetime.now().date()
@@ -221,6 +244,7 @@ class SuperApprovals(models.Model):
                 related_approvals_list=Approvals.objects.filter(leave=self.leave.leave_request_id)
                 for approval in related_approvals_list:
                     approval.visible=False
+                    approval.status="-"
                     approval.system_approval=False
                     approval.save()
       
@@ -241,13 +265,12 @@ class LeaveApply(models.Model):
         ("Rejected", "Rejected"),
     ]
     leave_request_id = models.AutoField(primary_key=True)
-    employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True)
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
     hr_year_id = models.IntegerField(blank=True,null=True)
     apply_date = models.DateTimeField(auto_now_add=True)  # Automatically set apply_date to the date and time of instance creation
     leave_type = models.ForeignKey(
         LeaveType,
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.PROTECT,
         limit_choices_to={'visible_at_leave_apply_time': True},
         related_name="leave_apply_type_headers"
     )
@@ -260,22 +283,37 @@ class LeaveApply(models.Model):
         blank=True
     )
     from_date = models.DateField()
-    to_date = models.DateField(blank=True, null=True)
+    to_date = models.DateField()
     days_count = models.IntegerField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="In Process")
     approved_date = models.DateField(blank=True, null=True)
     report_back_date = models.DateField(blank=True, null=True)
     notes = models.TextField()
-    attachment = models.FileField(upload_to='leave_attachments/', null=True, blank=True)
+    attachment = models.FileField(upload_to='leave_attachments/', blank=True, null=True)
+
+    def clean(self):
+        # Check if there are any leave applications in the range of from_date to to_date that are not Withdrawn or Rejected
+        overlapping_leaves = LeaveApply.objects.filter(
+            employee=self.employee,
+            from_date__lte=self.to_date,
+            to_date__gte=self.from_date
+        ).exclude(
+            status__in=["Withdraw", "Rejected"]
+        )
+        if overlapping_leaves.exists():
+            raise ValidationError("You have already applied for leave within the selected date range that is not Withdrawn or Rejected.")
     def save(self, *args, **kwargs):
         if self.pk and self.status=="Withdraw":
             existing_Approvals=Approvals.objects.filter(leave=self)
             existing_Approvals_super=SuperApprovals.objects.filter(leave=self).first()
-            existing_Approvals_super.visible=False
-            existing_Approvals_super.save()
+            if existing_Approvals_super:
+                existing_Approvals_super.visible=False
+                existing_Approvals_super.status="Withdraw"
+                existing_Approvals_super.save()
             self.handle_existing_approvals()
             for approval in existing_Approvals:
                 approval.visible=False
+                approval.status="Withdraw"
                 approval.system_approval=False
                 approval.save()
             super(LeaveApply, self).save(*args, **kwargs)
@@ -391,7 +429,7 @@ class LeaveApply(models.Model):
             pass  # Handle any exception that occurs during approval creation
             
     def set_leave_dates(self):
-        if self.leave_type.leave_type in ['Paternity', 'Maternity', 'Iddat']:
+        if self.leave_type.entire_service_validity :
             try:
                 availlimit = self.leave_type.one_time_avail_limit
                 availlimit_timedelta = timedelta(days=availlimit)
@@ -406,8 +444,9 @@ class LeaveApply(models.Model):
     def set_leave_deduction_bucket_id(self):
         if self.leave_type:
             try:
-                dependency = LeaveDependency.objects.get(leave_with_adjustable=self.leave_type)
-                self.leave_deduction_bucket_id = dependency.depends_upon
+                dependency = LeaveDependency.objects.filter(leave_with_adjustable=self.leave_type,priority=1).first()
+                if dependency:
+                    self.leave_deduction_bucket_id = dependency.depends_upon
             except LeaveDependency.DoesNotExist:
                 pass  # No matching LeaveDependency, leave_deduction_bucket remains as-is
                 
@@ -453,10 +492,10 @@ class LeaveApply(models.Model):
                 leave_from_date=self.from_date,
                 leave_to_date=self.to_date,
                 status=self.status,
-                leave_type_allowed=self.leave_type.avail_number_of_times,
-                leave_type_used=prevleavenondep.leave_type_remaning + 1 if prevleavenondep else 1,
-                leave_type_remaning=self.leave_type.avail_number_of_times - (
-                    prevleavenondep.leave_type_remaning + 1 if prevleavenondep else 1),
+                leave_type_allowed=self.leave_type.entire_service_limit,
+                leave_type_used=prevleavenondep.leave_type_remaning + self.leave_type.one_time_avail_limit  if prevleavenondep else self.leave_type.one_time_avail_limit,
+                leave_type_remaning=self.leave_type.entire_service_limit - (
+                    prevleavenondep.leave_type_used if prevleavenondep else self.leave_type.one_time_avail_limit),
             )
         except Exception as e:
             pass  # Handle any exception that occurs during LeaveNonDependableDetail creation

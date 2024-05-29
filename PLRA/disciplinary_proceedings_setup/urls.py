@@ -6,8 +6,13 @@ from .views import *
 router = DefaultRouter()
 router.register("InquiryOutcomesAPI", InquiryOutcomesAPI, basename="InquiryOutcomesAPI")
 router.register("InquiryTypeAPI", InquiryTypeAPI, basename="InquiryTypeAPI")
-# router.register("DisciplinaryProceedingInquiryAPI", DisciplinaryProceedingInquiryAPI, basename="DisciplinaryProceedingInquiryAPI")
-
+router.register("DisciplinaryProceedingInquiryAPI", DisciplinaryProceedingInquiryAPI, basename="DisciplinaryProceedingInquiryAPI")
+router.register("probeofficerapproval", ProbeOfficerApprovalViewSet,basename="probeofficerapproval")
+router.register("dgfirstapproval", DGFirstApprovalViewSet,basename="dgfirstapproval")
+router.register("regularinquiryofficerapproval", RegularInquiryOfficerApprovalViewSet,basename="regularinquiryofficerapproval")
+router.register("hruserapproval", HRUserApprovalViewSet,basename="hruserapproval")
+router.register("directorhrapproval", DirectorHrApprovalViewSet,basename="directorhrapproval")
+router.register("dgfinalapproval", DGFinalApprovalViewSet,basename="dgfinalapproval")
 # Add registration for other view classes here
 
 urlpatterns = [

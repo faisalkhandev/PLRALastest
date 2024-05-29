@@ -2,17 +2,16 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import Cookies from 'js-cookie'
 
 export const EmployeeMasterDataAPI = createApi({
-    reducerPath: "leaveApi",
+    reducerPath: "EmployeeMasterDataAPI",
     baseQuery: fetchBaseQuery({
         baseUrl: "http://127.0.0.1:8000/",
         prepareHeaders: (headers, { getState }) => {
-            const authToken = sessionStorage.getItem("authToken");
+            const authToken = Cookies.get("authToken");
             const csrfToken = Cookies.get("csrftoken");
             if (authToken && csrfToken) {
                 headers.set("Authorization", `Token ${authToken}`);
                 headers.set("X-CSRFToken", csrfToken);
             }
-            headers.set("Content-Type", "application/json");
             return headers;
         },
     }),
@@ -22,6 +21,14 @@ export const EmployeeMasterDataAPI = createApi({
         getUser: builder.query({
             query: () => ({
                 url: "/basic-info/User/",
+                method: 'GET',
+            }),
+        }),
+
+        //User Get Api
+        getUserById: builder.query({
+            query: (id) => ({
+                url: `/basic-info/User/${id}`,
                 method: 'GET',
             }),
         }),
@@ -54,6 +61,16 @@ export const EmployeeMasterDataAPI = createApi({
                 method: "DELETE",
             }),
         }),
+
+//employee minidashboard data:
+
+getEmployeeMiniDashboardData: builder.query({
+    query: (id) => ({
+        url: `/basic-info/employee-mini-dashboard/${id}/`,
+        method: 'GET',
+    }),
+}),
+
 
 
         //Employee Level of Skill Get Api
@@ -144,8 +161,8 @@ export const EmployeeMasterDataAPI = createApi({
 
         //Employee Personal Documents API
         getPersonalDocuments: builder.query({
-            query: () => ({
-                url: "/master-data/personal_document/",
+            query: (id) => ({
+                url: `/master-data/personal_document/?employee__id=${id}`,
                 headers: { 'Content-Type': 'multipart/form-data' },
                 method: 'GET',
             }),
@@ -157,6 +174,7 @@ export const EmployeeMasterDataAPI = createApi({
                 method: "POST",
                 body: formD,
             }),
+            
         }),
         updatePersonalDocuments: builder.mutation({
             query: ({ selectRowID, formD }) => ({
@@ -249,6 +267,7 @@ export const EmployeeMasterDataAPI = createApi({
 
 export const {
     useGetUserQuery,
+    useGetEmployeeMiniDashboardDataQuery,
     useGetEmployeeReferenceQuery, useDeleteEmployeeReferenceMutation, usePostEmployeeReferenceMutation, useUpdateEmployeeReferenceMutation,
     useGetEmployeeLevelofSkillQuery,
     useGetEmployeeSkillQuery, usePostEmployeeSkillMutation, useUpdateEmployeeSkillMutation,
@@ -258,5 +277,5 @@ export const {
     useGetAddressQuery, usePostAddressMutation, useUpdateAddressMutation, useDeleteAddressMutation, useDeletePersonalDocumentsMutation,
     useGetEmployeDistrictQuery,
     useGetEmployeeTehsilQuery,
-    useGetEmployeeCityQuery, useGetPositionbyJobCenterFilterQuery, useGetJobLevelQuery
+    useGetEmployeeCityQuery, useGetPositionbyJobCenterFilterQuery, useGetJobLevelQuery,useGetUserByIdQuery
 } = EmployeeMasterDataAPI;

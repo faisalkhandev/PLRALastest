@@ -22,5 +22,5 @@ class HolidayAPI(BaseAPIViewSet):
     serializer_class = HolidaySerializer
     def get_serializer_class(self):
         if self.action == 'list':
-                return HRCelanderYearSerializer
+                return HolidaySerializer
         return super().get_serializer_class()

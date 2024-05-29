@@ -9,13 +9,17 @@ import Address from './TabBar_MasterData/Address_Form';
 import Contact_Information from './TabBar_MasterData/Contact_Form';
 import Family_Information from './TabBar_MasterData/Family_Form';
 import History_Form from './TabBar_MasterData/History_Form';
-import Training_Form from './TabBar_MasterData/Training_Form';
+import Dependent_Employment_History from './TabBar_MasterData/Dependent_Employment_History';
 import Position from './TabBar_MasterData/Position';
 import Skill_Form from './TabBar_MasterData/Skill_Form';
 import References_Form from './TabBar_MasterData/References_Form';
 import Document_Form from './TabBar_MasterData/Document_Form';
+import TraningForm from './TabBar_MasterData/TraningForm'
 import { GoBack } from '../../../Assets/Icons';
 import { useGetRoutesQuery } from '../../../Features/API/RoleManagement';
+import Cookies from 'js-cookie'
+import { columnGroupsStateInitializer } from '@mui/x-data-grid/internals';
+
 
 const Employee_MasterData = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -24,10 +28,12 @@ const Employee_MasterData = () => {
   const theme = useTheme();
 
   useEffect(() => {
-    const authToken = sessionStorage.getItem('authToken');
+    const authToken = Cookies.get('authToken');
     setAccessToken(authToken);
   }, []);
   const { data: routesData, loading, error, refetch } = useGetRoutesQuery(accessToken);
+
+console.log("RouteData::::",routesData)
 
   const generateTabsFromModels = () => {
     if (routesData && routesData.processes && routesData.processes.Employee) {
@@ -51,12 +57,12 @@ const Employee_MasterData = () => {
       switch (selectedModel.model_name) {
         case 'Basic_Information':
           return <BasicInformation />;
+          case 'Position':
+            return <Position />;
         case 'Education':
           return <Education />;
-        case 'Position':
-          return <Position />;
         case 'Training':
-          return <Training_Form />;
+          return <TraningForm />;
         case 'Skills':
           return <Skill_Form />;
         case 'Personal_Information':
@@ -67,16 +73,14 @@ const Employee_MasterData = () => {
           return <Family_Information />;
         case 'History':
           return <History_Form />;
-        case 'Referance':
+        case 'Reference':
           return <References_Form />;
         case 'Contact_Information':
           return <Contact_Information />;
         case 'Address':
           return <Address />;
-        case 'Education':
-          return <Training_Form />;
         case 'Dependent_History':
-          return <Training_Form />;
+          return <Dependent_Employment_History />;
         default:
           return null;
       }

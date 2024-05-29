@@ -8,11 +8,13 @@ class BaseSerializer(serializers.ModelSerializer):
         model_name = self.Meta.model.__name__
         model = globals()[model_name]
         instance = model(**validated_data)
+        instance.clean()
         instance.save()
         return instance
     def update(self, instance, validated_data):
         for key, value in validated_data.items():
             setattr(instance, key, value)
+        instance.clean()
         instance.save()
         return instance
 

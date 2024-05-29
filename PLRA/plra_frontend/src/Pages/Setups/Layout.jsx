@@ -14,7 +14,7 @@ const Layout = () => {
     <Box sx={{ p: 4 }}>
       <Box className="setup_customBox">
         <Grid container columnSpacing={2} sx={{ height: "calc(100vh - 115px)", pt: 2 }}>
-          <Grid item xs={1.8}
+          <Grid item xs={2}
             sx={{
               width: "100%", borderRight: '2px solid #e2e1e0', overflow: 'hidden',
               height: 'calc(100vh - 172px)', display: { xs: 'none', md: "flex" },
@@ -22,12 +22,12 @@ const Layout = () => {
             }}>
             <Setup_SideBar />
           </Grid>
-          <Grid item xs={12} md={10} sx={{
+          <Grid item xs={12} md={9.9} sx={{
             maxWidth: "100%", borderRight: '2px solid #e2e1e0', overflow: 'hidden',
             height: 'calc(100vh - 172px)', marginLeft: '6px',
             border: '1px solid #e2e1e0', borderRadius: "6px", display: 'flex', justifyContent: 'center'
           }}>
-            <Box sx={{ width: "1050px" }}>
+            <Box sx={{ width: "98%" }}>
               <Right_Sidebar />
             </Box>
           </Grid>

@@ -1,7 +1,7 @@
 import React, { Fragment, useState, useEffect } from 'react';
-import { Typography, Box, Grid, Dialog } from '@mui/material';
+import { Typography, Box, Grid } from '@mui/material';
 import { useTheme } from '@emotion/react';
-import { Btn, InputField } from '../../../Components/index';
+import { Btn, DialogBox, InputField } from '../../../Components/index';
 import { MyTableContainer } from '../../../Components/index';
 import {
     useNOCTypeQuery,
@@ -9,12 +9,14 @@ import {
     useUpdateNOCTypeMutation,
     useDeleteNOCTypeMutation,
 } from '../../../Features/API/NocAPI';
-import { toast } from 'react-toastify';
-import { Warning } from '../../../Assets/Icons';
 import '../../Styles.css';
+import StatusCodeHandler from '../../../Components/Common/StatusCodeHandler';
+import { showToast } from '../../../Components/shared/Toast_Card';
+
 
 const Noc_Type = () => {
     const theme = useTheme();
+    const [formErrors, setFormErrors] = useState({});
     const [formData, setFormData] = useState({ noc_rec_id: null, noc_type: '' });
     const [selectRowID, setSelectedRowID] = useState(null);
     const [isRowSelected, setIsRowSelected] = useState(false);
@@ -28,9 +30,9 @@ const Noc_Type = () => {
     const [deleteNOC] = useDeleteNOCTypeMutation();
 
     // Get data on start
-    useEffect(() => { refetch() }, []);
 
     const resetForm = () => {
+        setFormErrors({});
         setIsRowSelected(false);
         setFormData({ noc_rec_id: '', noc_type: '' });
     };
@@ -52,42 +54,37 @@ const Noc_Type = () => {
     const handleSave = async () => {
         if (isRowSelected) {
             // update record 
-            const res = await updateNOC({ ID: selectRowID, NOC_Data: formData }).unwrap();
-            if (res.error) {
-                if (res.error.status === 400) { return toast.error("ID already exists.", { position: "top-center", autoClose: 3000 }) }
-                else if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-                else if (res.error.status === 409) { return toast.error("Record updation failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-                else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+            const res = await updateNOC({ ID: selectRowID, NOC_Data: formData })
+            if (res?.error && res.error.status) {
+                setFormErrors(res?.error)
+                return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
             }
-            toast.success("Record Updated successfully.", { position: "top-center", autoClose: 3000 });
+            showToast(`Record updated Successfully`, "success");
+            resetForm();
         }
         else {
             // create new record 
-            const res = await createNOC(formData).unwrap();
-            if (res.error) {
-                if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-                else if (res.error.status === 400) { return toast.error("ID alredy exist.", { position: "top-center", autoClose: 3000 }) }
-                else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+            const res = await createNOC(formData)
+            if (res?.error && res?.error?.status) {
+                setFormErrors(res?.error)
+                return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
             }
-            toast.success("Record created successfully.", { position: "top-center", autoClose: 3000 })
+            showToast(`Record created Successfully`, "success");
+            resetForm();
         }
-        refetch();
-        resetForm();
     };
 
     const handleDelete = async () => {
         if (selectRowID) {
             const res = await deleteNOC(selectRowID);
-            console.log(res);
-            if (res.error) {
-                if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-                else if (res.error.status === 409) { return toast.error("Record deletion failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-                else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+            if (res?.error && res?.error?.status) {
+                setFormErrors(res?.error)
+                return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
             }
             else {
-                toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 1500 });
-                refetch();
+                showToast(`Record Deleted Successfully`, "success");
                 resetForm();
+                refetch();
             }
         }
     };
@@ -96,10 +93,11 @@ const Noc_Type = () => {
         if (isRowSelected) {
             setDeleteDialog(true);
         } else {
-            toast.warn("Please select a record to delete.", { position: "top-center", autoClose: 3000 });
+            return showToast('Record not Selected', 'error');
         }
     };
 
+    useEffect(() => { refetch() }, [handleDelete]);
 
     const columns = [
         {
@@ -141,15 +139,25 @@ const Noc_Type = () => {
                 <Btn type='reset' onClick={resetForm} />
                 <Btn type='save' onClick={handleSave} />
                 <Btn type='delete' onClick={handleDeleteDiaglog} />
+                {
+                    deleteDialog ?
+                        <DialogBox
+                            open={deleteDialog}
+                            onClose={() => setDeleteDialog(false)}
+                            closeClick={() => setDeleteDialog(false)}
+                            sureClick={() => { handleDelete(); setDeleteDialog(false); }}
+                            title={"Are you sure you want to delete the record?"}
+                        /> : ''
+                }
             </Box>
             <form action=''>
                 <Grid container spacing={4} sx={{ mt: 1 }}>
                     {/* Assuming 'noc_rec_id' is not editable */}
                     <Grid item xs={12} md={6}>
-                        <InputField name='noc_rec_id' label='NOC ID' outerStyles={{}} placeholder='Enter NOC Type' type='text' mandatory={true} value={formData.noc_rec_id} onChange={handleChange} />
+                        <InputField name='noc_rec_id' label='NOC ID' outerStyles={{}} placeholder='Enter NOC Type' type='text' mandatory={true} value={formData.noc_rec_id} onChange={handleChange} error={formErrors?.data?.noc_rec_id} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                        <InputField name='noc_type' label='NOC Type Name' outerStyles={{}} placeholder='Enter NOC Type' type='text' mandatory={true} value={formData.noc_type} onChange={handleChange} />
+                        <InputField name='noc_type' label='NOC Type Name' outerStyles={{}} placeholder='Enter NOC Type' type='text' mandatory={true} value={formData.noc_type} onChange={handleChange} error={formErrors?.data?.noc_type} />
                     </Grid>
                 </Grid>
             </form>
@@ -160,24 +168,13 @@ const Noc_Type = () => {
                         columns={columns}
                         data={data.results}
                         isAddNewButton={true}
-                        customPageSize={10}
+                        customPageSize={9}
                         RowFilterWith='noc_rec_id'
                         onRowClick={handleRowClick}
-                        minHeight={'calc(100vh - 350px)'}
+                        minHeight={'calc(100vh - 370px)'}
                     />
                 )}
             </Box>
-
-
-            <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-                <Box sx={{ minWidth: '400px', p: 2 }}>
-                    <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-                        <Btn type="sure" onClick={() => { handleDelete(); setDeleteDialog(false); }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-                        <Btn type="close" onClick={() => setDeleteDialog(false)} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-                    </Box>
-                </Box>
-            </Dialog>
         </Fragment>
     );
 };

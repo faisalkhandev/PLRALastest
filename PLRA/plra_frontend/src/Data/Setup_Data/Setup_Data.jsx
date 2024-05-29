@@ -10,6 +10,26 @@ export const RegionHeader = [
     flex: true
   },
 ]
+
+export const PayrollCodeHeader = [
+  {
+    field: "classcode_id",
+    headerName: "ID",
+    flex: true
+  },
+  {
+    field: "classcode",
+    headerName: "Class Code",
+    flex: true
+  },
+  {
+    field: "description",
+    headerName: "Description",
+    flex: true
+  },
+]
+
+
 export const EmployeeTitle = [
   {
     field: "employee_title",
@@ -231,6 +251,50 @@ export const JobDistrictHeader = [
     align: "left",
   }
 ];
+export const RelationHeader = [
+  {
+    field: "fimaly_rec_id",
+    headerName: "Family Relation ID",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+  {
+    field: "full_name",
+    headerName: "Full Name",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+  {
+    field: "birth_Date",
+    headerName: "Date of Birth",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+  {
+    field: "relation",
+    headerName: "Relation",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+  {
+    field: "is_dependent",
+    headerName: "Is Dependent",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+  {
+    field: "employee",
+    headerName: "Employee Name",
+    type: "string",
+    flex: true,
+    align: "left",
+  },
+];
 
 export const divisionHeader = [
   {
@@ -298,21 +362,25 @@ export const CityHeader = [
 ];
 
 export const PositionHeader = [
-
-  { field: 'position_id', headerName: 'Position Id', flex: true },
-
-  { field: 'position_desc', headerName: 'Position Description', flex: 1 },
+  { field: 'position_desc', headerName: 'Position Description', minWidth: 200 },
   {
-    field: 'wing', headerName: '  Wing Id', flex: 1, renderCell: (params) => {
+    field: 'wing', headerName: 'Wing', minWidth: 200, renderCell: (params) => {
       return (
         <span>{params.row.wing.wing_name}</span>
       )
     }
   },
   {
-    field: 'sub_wing', headerName: '  Wing Id', flex: 1, renderCell: (params) => {
+    field: 'sub_wing', headerName: 'SubWing', minWidth: 200, renderCell: (params) => {
       return (
         <span>{params.row.sub_wing.sub_wing_name}</span>
+      )
+    }
+  },
+  {
+    field: 'center', headerName: 'Center', minWidth: 200, renderCell: (params) => {
+      return (
+        <span>{params.row.location.center_name}</span>
       )
     }
   },
@@ -435,3 +503,37 @@ export const JobLevelHeader = [
 
   },
 ];
+
+export const etransferwindow = [
+  {
+    field: 'p_rec_id', headerName: 'open position ID', minWidth: 120,
+  },
+  { field: 'position_desc', headerName: 'Position Desc', minWidth: 300 },
+  {
+    field: 'job_title', headerName: 'Job Title', minWidth: 150  // Added this line
+  },
+  {
+    field: 'center_name', headerName: 'Center', minWidth: 150  // Added this line
+  },
+  {
+    field: 'district', headerName: 'District', minWidth: 150  // Added this line
+  },
+  {
+    field: 'division', headerName: 'Division', minWidth: 150  // Added this line
+  },
+  {
+    field: 'region', headerName: 'Region', minWidth: 150  // Added this line
+  },
+  {
+    field: 'tehsil', headerName: 'Tehsil', minWidth: 150  // Added this line
+  },
+  {
+    field: 'position_type', headerName: 'Position Type', minWidth: 150  // Added this line
+  },
+  {
+    field: 'sub_wing', headerName: 'Sub Wing', minWidth: 150  // Added this line
+  },
+  {
+    field: 'wing', headerName: 'Wing', minWidth: 150  // Added this line
+  },
+]

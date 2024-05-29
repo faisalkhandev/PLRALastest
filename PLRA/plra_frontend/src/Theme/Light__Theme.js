@@ -26,15 +26,15 @@ const Theme = createTheme({
       main: "#FF0000", // Red
       light: "#FF6565", // Light Red
       dark: "#B10202", // Dark Red
-      600:"#df6d7c",
-      300:"#efd5d5"
+      600: "#df6d7c",
+      300: "#efd5d5"
     },
     warning: {
       main: "#F18F01", // Yellow
       light: "#FFBA57", // Light Yellow
       dark: "#AF6800", // Dark Yellow
-      600:"#ffa55c",
-      300:"#ffebda"
+      600: "#ffa55c",
+      300: "#ffebda"
     },
     info: {
       main: "#2196F3", // Light Blue
@@ -47,8 +47,8 @@ const Theme = createTheme({
       light: "#81C784", // Light Green
       dark: "#388E3C", // Dark Green
       contrastText: "#fff", // White
-      600:"#0e903a",
-      300:"#c3f0eb"
+      600: "#0e903a",
+      300: "#c3f0eb"
     },
     gray: {
       main: "#A1A1A1",
@@ -61,10 +61,21 @@ const Theme = createTheme({
     black: {
       800: "#000000",
       600: "#6D6D6D",
-      300: "#e2e1e0", //Divider-Color
+      300: "#e2e1e0",
     },
     white: {
       800: "#ffffff",
+    },
+    cyan: {
+      100: '#e0f7fa',
+      200: '#b2ebf2',
+      300: '#80deea',
+      400: '#4dd0e1',
+      500: '#26c6da',
+      600: '#00bcd4',
+      700: '#00acc1',
+      800: '#0097a7',
+      900: '#00838f',
     },
   },
 
@@ -168,17 +179,21 @@ const Theme = createTheme({
               border: "1px solid #379237",
               borderRadius: "0.2rem",
             },
+            '&.Mui-disabled': {
+              '& .MuiOutlinedInput-root': {
+                border: '1px solid #fff',
+                color: '#000',
+              },
+            },
           },
           width: "100%",
         },
-        disabled: {
-          // Style for disabled state
-          "& .MuiOutlinedInput-root": {
-            // Change to .MuiOutlinedInput-root
-            border: "1px solid #fff",
-            color: "#000",
-          },
-        },
+        // disabled: {
+        //   "& .MuiOutlinedInput-root": {
+        //     border: "1px solid #fff",
+        //     color: "#000",
+        //   },
+        // },
       },
     },
     // Buttons
@@ -258,11 +273,11 @@ const Theme = createTheme({
         },
 
         menuList: {
-          borderRadius: "10px",
+          borderRadius: "100px",
 
-          width: "164px",
+          width: "150px",
 
-          backgroundColor: "#000",
+          backgroundColor: "#FFFFFF",
         },
 
         columnHeaders: {
@@ -296,11 +311,11 @@ const Theme = createTheme({
         },
 
         menu: {
-          maxWidth: "160px",
+          maxWidth: "150px",
         },
 
         MenuItem: {
-          maxWidth: "160px",
+          maxWidth: "150px",
 
           padding: "3px 10px",
         },
@@ -335,22 +350,24 @@ const Theme = createTheme({
       },
     },
 
-    MuiMenuItem: {
-      styleOverrides: {
-        root: {
-          maxWidth: "30px",
-          padding: "3px 10px",
-        },
-      },
-    },
+    // MuiMenuItem: {
+    //   styleOverrides: {
+    //     root: {
+    //       maxWidth: "30px",
+    //       padding: "3px 10px",
+
+    //     },
+    //   },
+    // },
 
     //Card
 
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: "8px",
-          backgroundColor: "#F9F8F7",
+          '&$selected': { // <-- mixing the two classes
+            backgroundColor: 'green'
+          }
         },
       },
     },
@@ -414,20 +431,20 @@ const Theme = createTheme({
       },
     },
 
-    MuiListItem: {
-      styleOverrides: {
-        root: {
-          width: "100%",
-          padding: 0,
-        },
-      },
-    },
+    // MuiListItem: {
+    //   styleOverrides: {
+    //     root: {
+    //       width: "100%",
+    //       padding: 0,
+    //     },
+    //   },
+    // },
 
     MuiSwitch: {
       styleOverrides: {
         root: {
           width: 40,
-          height: 20, 
+          height: 20,
           padding: 0,
         },
         switchBase: {
@@ -490,7 +507,15 @@ const Theme = createTheme({
       styleOverrides: {
         root: {
           fontSize: "0.75rem",
-          width: "160px",
+          width: "150px",
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          fontSize: "0.75rem",
+          width: "150px",
         },
       },
     },

@@ -24,43 +24,90 @@ const Employee = () => {
   const columns = [
     {
       field: "employee_no",
-      headerName: "Employee Number",
-      minWidth: 200,
+      headerName: "Employee ID",
+      minWidth: 120,
       renderCell: renderNullInRed,
       renderCell: (params) => {
         const onView = () => { setSelectedRowData(params.row) };
         return (
-          <Link to={`/employee/${params.id}`} style={{ color: "#379237", textDecoration: 'underline' }} onClick={onView}> {params.value} </Link>
+          <Link to={`/employee/${params.id}`} style={{ color: "#000" }} onClick={onView}> {params.value} </Link>
         );
       },
     },
     {
       field: "name",
       headerName: "Name",
-      minWidth: 200,
+      minWidth: 230,
       renderCell: renderNullInRed,
-      valueGetter: (params) =>
-        `${params.row.first_name || ""} ${params.row.last_name || ""}`,
+      valueGetter: (params) => `${params.row.first_name || ""} ${params.row.last_name || ""}`,
+      renderCell: (params) => {
+        const onView = () => { setSelectedRowData(params.row) };
+        return (
+          <Link to={`/employee/${params.id}`} style={{ color: "#000" }} onClick={onView}> {params.value} </Link>
+        );
+      },
     },
     {
       field: "father_name",
       headerName: "Father Name",
-      minWidth: 200,
+      minWidth: 230,
+      renderCell: (params) => {
+        const onView = () => { setSelectedRowData(params.row) };
+        return (
+          <Link to={`/employee/${params.id}`} style={{ color: "#000" }} onClick={onView}> {params.value} </Link>
+        );
+      },
     },
     {
       field: "cnic",
       headerName: "CNIC",
-      minWidth: 200,
+      minWidth: 140,
+      renderCell: (params) => {
+        const onView = () => { setSelectedRowData(params.row) };
+        return (
+          <Link to={`/employee/${params.id}`} style={{ color: "#000" }} onClick={onView}> {params.value} </Link>
+        );
+      },
     },
     {
       field: "phoneNumber",
       headerName: "Phone Number",
+      minWidth: 140,
+      renderCell: (params) => {
+        const onView = () => { setSelectedRowData(params.row) };
+        return (
+          <Link to={`/employee/${params.id}`} style={{ color: "#000" }} onClick={onView}> {params.value} </Link>
+        );
+      },
+    },
+    {
+      field: "position",
+      headerName: "Position",
       minWidth: 200,
+      valueGetter: (params) => `${params?.row?.position?.position_desc || ""}`,
+    },
+    {
+      field: "center_name",
+      headerName: "Center",
+      minWidth: 140,
+      valueGetter: (params) => `${params?.row?.center?.center_name || ""}`,
+    },
+    {
+      field: "wing",
+      headerName: "Wing",
+      minWidth: 70,
+      valueGetter: (params) => `${params?.row?.position?.wing?.wing_id || ""}`,
+    },
+    {
+      field: "subwing",
+      headerName: "Sub Wing",
+      minWidth: 70,
+      valueGetter: (params) => `${params?.row?.position?.sub_wing?.sub_wind_id || ""}`,
     },
     {
       field: "is_active",
       headerName: "Status",
-      minWidth: 200,
+      minWidth: 80,
       renderCell: (params) => (
         <span style={{ color: params.value ? 'green' : 'red' }}>
           {params.value ? 'Active' : 'In-Active'}
@@ -74,7 +121,7 @@ const Employee = () => {
     <div style={{ margin: "14px 30px 0 30px", height: "calc(100vh - 100px)" }} className='EmployeeTableBox'>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Breadcrumb title="Employee" breadcrumbItem="Employee / Employee List" />
-        <Link to='/Basic_Info'><Btn type="add" /></Link>
+        <Link to='/add_new_employee'><Btn type="add" /></Link>
       </Box>
       {Employeeloading ? (
         <Loader />
@@ -88,10 +135,10 @@ const Employee = () => {
                   data={EmployeeData.results}
                   tableHeading="Employee"
                   isAddNewButton={true}
-                  customPageSize={20}
+                  customPageSize={16}
                   route={"/employee/basic_information/AddEmployee"}
                   RowFilterWith="id"
-                  minHeight={"calc(100vh - 200px)"}
+                  minHeight={"calc(100vh - 218px)"}
                 />
               ) : null
             )}

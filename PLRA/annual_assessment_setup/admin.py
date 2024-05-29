@@ -43,4 +43,4 @@ class AARHOCounterAssigningOfficerApprovalAdmin(admin.ModelAdmin):
     list_display = ('aar_process', 'counter_assigning_officer', 'frequency_of_work', 'visible', 'status')
 @admin.register(AARProcess)
 class AARProcessAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'year', 'aar_apply_Date', 'attachments', 'status')
+    list_display = ('employee', 'year', 'aar_apply_Date', 'attachments', 'status','is_head_office')

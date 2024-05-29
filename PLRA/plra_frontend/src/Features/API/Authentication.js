@@ -7,8 +7,8 @@ export const Authentication = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: "http://127.0.0.1:8000/",
         prepareHeaders: (headers, { getState }) => {
-            const authToken = sessionStorage.getItem("authToken");
             const csrfToken = Cookies.get("csrftoken");
+            const authToken = Cookies.get('authToken');
             if (authToken && csrfToken) {
                 headers.set("Authorization", `Token ${authToken}`);
                 headers.set("X-CSRFToken", csrfToken);

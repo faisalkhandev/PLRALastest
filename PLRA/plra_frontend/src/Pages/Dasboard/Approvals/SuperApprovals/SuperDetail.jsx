@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import EmployeeMinidashboard from "../../../../Components/shared/EmployeeMinidashboard.jsx";
 
 import SuperApprovalsDetails from "./SuperApprovalsDetails.jsx";
-import FillterLeaveTable from "../LeaveApprovals/FillterLeaveTable.jsx";
+import MiniDashboardLeaveDetail from "../LeaveApprovals/MiniDashboardLeaveDetail.jsx";
 
 const SuperDetail = () => {
     const theme = useTheme();
@@ -60,7 +60,7 @@ const SuperDetail = () => {
                     >
                         {selectedLabel === "Casual Leave" || selectedLabel === "Medical" ? (
                             <Box>
-                                <FillterLeaveTable
+                                <MiniDashboardLeaveDetail
                                     fillter={`${selectedLabel}`}
                                     onCasualClick={handleCasualClick}
                                 />

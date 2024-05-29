@@ -7,8 +7,8 @@ class EmployeeBasicInformationConfig(AppConfig):
     name = 'employee_basic_information'
     verbose_name ="Employee"
     verbose_name_plural = "Employees"
-    def ready(self):
-        from jobs import updated
-        updated.start()
+    # def ready(self):
+    #     from jobs import updated
+    #     updated.start()
     
     

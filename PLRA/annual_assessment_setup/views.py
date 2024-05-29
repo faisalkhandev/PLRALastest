@@ -1,8 +1,11 @@
 from django.shortcuts import render
+from rest_framework.response import Response
+
 from .models import *
 from .serializers import *
 from employee_basic_information.views import BaseAPIViewSet
-from rest_framework import viewsets
+from rest_framework import generics,viewsets
+
 
 # Create your views here.
 
@@ -34,7 +37,18 @@ class RatingTypePointsViewSet(BaseAPIViewSet):
         return super().get_serializer_class()
     
 
+class CheckJobViewset(generics.ListAPIView):
+        serializer_class = checkjobSerializer
 
+        def get_queryset(self):
+                results=[]
+                employee_id = self.kwargs['employee_id']
+                employee = Employee.objects.get(pk=employee_id)
+                res =None
+                res=AARprescribedForm.objects.filter(job=employee.position.job).exists()
+                print(res)
+                results.append({'headoffice': res})
+                return results
     
 
 class AARprescribedFormViewSet(BaseAPIViewSet):
@@ -54,7 +68,18 @@ class AARProcessViewSet(BaseAPIViewSet):
         if self.action == 'list'or self.action=='retrive':
                 return AARProcess_list_Serializer
         return super().get_serializer_class()
-    
+
+class AARProcessListViewSet(BaseAPIViewSet):
+    queryset = AARProcess.objects.all()
+    serializer_class = AARProcessListSerializer
+
+class AARCompetentAuthorityApprovalViewSet(BaseAPIViewSet):
+    queryset = AARCompetentAuthorityApproval.objects.all()
+    serializer_class = AARCompetentAuthorityApprovalSerializer 
+    def get_serializer_class(self):
+        if self.action == 'list'or self.action=='retrive':
+                return AARCompetentAuthorityApprovallistSerializer
+        return super().get_serializer_class()
 
 
 

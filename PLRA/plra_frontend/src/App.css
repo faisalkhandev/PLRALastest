@@ -104,3 +104,23 @@
   padding: 10px 30px;
   height: calc(100vh - 120px);
 }
+
+/* Hide the default file input button */
+input[type="file"]::-webkit-file-upload-button {
+  position: absolute;
+  left: -9999px;
+}
+
+/* Style the custom button */
+input[type="file"]::before {
+  content: 'Choose file'; 
+  font-family: 'Segoe UI';
+  padding: 0.5px 1px;
+  border: 1px solid grey;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+

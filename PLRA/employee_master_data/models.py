@@ -87,19 +87,19 @@ class PersonalInformation(models.Model):
         default=OTHER,
     )
     birth_date=models.DateField()
-    age=models.CharField(max_length=50,blank=True,null=True)
+    age=models.CharField(max_length=50,blank=True, null=True)
     deceased_date = models.DateField(blank=True, null=True)
     native_language = models.CharField(
         max_length=20,
         choices=LANGUAGE_CHOICES,
-        default=OTHER,
+        default=OTHER,blank=True,null=True
     )
     pastport_number=models.CharField(max_length=40,blank=True,null=True)
     eobi_number=models.CharField(max_length=16,blank=True,null=True)
-    weight=models.FloatField()
-    height=models.FloatField()
+    weight=models.FloatField(blank=True,null=True)
+    height=models.FloatField(blank=True,null=True)
     disability_note=models.CharField(max_length=100,blank=True)
-    domicel=models.ForeignKey(Cities,on_delete=models.PROTECT,related_name="domicel",blank=True,null=True)
+    domicel=models.ForeignKey(Cities,on_delete=models.PROTECT,related_name="domicel")
     date_of_superannutation=models.DateField(blank=True,null=True)
     nationality=models.ForeignKey(Countries,on_delete=models.PROTECT)
     birth_city=models.ForeignKey(Cities,on_delete=models.PROTECT)
@@ -168,9 +168,9 @@ class EmployeeReferance(models.Model):
     Designation=models.CharField(max_length=50)
     years_known=models.IntegerField()
     phoneNumber = PhoneNumberField(region="PK", blank=True)
-    company_address=models.CharField(max_length=100)
+    company_address=models.CharField(max_length=150)
     class Meta:
-        verbose_name='Referance'
+        verbose_name='Reference'
     def __str__(self):
         return self.referance_name
 class DependentEmploymentHistory(models.Model):
@@ -180,10 +180,10 @@ class DependentEmploymentHistory(models.Model):
         organization_name=models.CharField(max_length=30)
         position_held=models.CharField(max_length=30)
         employment_start_date=models.DateField()
-        employment_end_date=models.DateField()
-        leaving_reason=models.CharField(max_length=50)
+        employment_end_date=models.DateField(blank=True, null=True)
+        leaving_reason=models.CharField(max_length=50, blank=True, null=True)
         organization_contact_number=PhoneNumberField(region="PK", blank=True)
-        organization_address=models.CharField(max_length=50)
+        organization_address=models.CharField(max_length=150)
         government_job=models.BooleanField(default=False)
         job_district=models.ForeignKey(District,models.PROTECT)
         class Meta:
@@ -199,7 +199,7 @@ class EmploymentHistory(models.Model):
         employment_end_date=models.DateField()
         leaving_reason=models.CharField(max_length=50)
         organization_contact_number=PhoneNumberField(region="PK", blank=True)
-        organization_address=models.CharField(max_length=50)
+        organization_address=models.CharField(max_length=150)
         government_job=models.BooleanField(default=False)
         job_district=models.ForeignKey(District,models.PROTECT)
         class Meta:
@@ -215,6 +215,9 @@ class Level_of_Skill(models.Model):
     level_of_skill = models.CharField(max_length=30)
     description = models.CharField(max_length=30)
 class Education(models.Model):
+    def upload_path(instance, filename):
+        # Construct the upload path with the employee's first name
+        return f'media/{instance.employee.first_name+instance.employee.last_name}/Employee-Educations/{filename}'
     employee=models.ForeignKey(Employee,on_delete=models.PROTECT)
     education_rec_id = models.AutoField(primary_key=True)
     education = models.CharField(max_length=30)
@@ -224,19 +227,21 @@ class Education(models.Model):
     institution_country = models.ForeignKey(Countries, models.PROTECT)
     education_start_date = models.DateField()
     education_end_date = models.DateField()
+    attachment = models.FileField(upload_to=upload_path,blank=True,null=True)
     grade = models.CharField(max_length=5)
     scale = models.IntegerField()
+   
 class Training(models.Model):
     employee=models.ForeignKey(Employee,on_delete=models.PROTECT)
     training_rec_id = models.AutoField(primary_key=True)
-    training_topic = models.CharField(max_length=20)
-    training_nature = models.CharField(max_length=20)
-    status = models.CharField(max_length=10)
+    training_topic = models.CharField(max_length=200)
+    training_nature = models.CharField(max_length=200)
+    status = models.CharField(max_length=100)
     training_start_date = models.DateField()
     training_end_date = models.DateField()
-    score_required_to_pass = models.CharField(max_length=2)
-    obtained_score = models.CharField(max_length=2)
-    remarks = models.CharField(max_length=50)
+    score_required_to_pass = models.CharField(max_length=200)
+    obtained_score = models.CharField(max_length=200)
+    remarks = models.CharField(max_length=500)
 class Skill(models.Model):
     employee=models.ForeignKey(Employee,on_delete=models.PROTECT)
     skill_rec_id = models.AutoField(primary_key=True)
@@ -251,9 +256,9 @@ class Skill(models.Model):
 class Personal_Document(models.Model):
     employee=models.ForeignKey(Employee,on_delete=models.PROTECT)
     personal_document_rec_id = models.AutoField(primary_key=True)
-    document_type = models.CharField(max_length=10)
-    document_name = models.CharField(max_length=15)
-    issuance_authority = models.CharField(max_length=15)
+    document_type = models.CharField(max_length=25)
+    document_name = models.CharField(max_length=25)
+    issuance_authority = models.CharField(max_length=25)
     effective_date = models.DateField()
     expiration_date = models.DateField(blank=True, null=True)
     renewal_require = models.BooleanField()
@@ -266,10 +271,10 @@ class EmployeeAddress(models.Model):
     employee=models.ForeignKey(Employee,on_delete=models.PROTECT)
     e_a_rec_id=models.AutoField(primary_key=True)
     name = models.CharField(max_length=20)
-    address = models.CharField(max_length=50)
-    district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True)
-    tehsil = models.ForeignKey(Tehsil, on_delete=models.SET_NULL, null=True)
-    city = models.ForeignKey(Cities, on_delete=models.SET_NULL, null=True)
+    address = models.CharField(max_length=150)
+    district = models.ForeignKey(District, on_delete=models.PROTECT)
+    tehsil = models.ForeignKey(Tehsil, on_delete=models.PROTECT)
+    city = models.ForeignKey(Cities, on_delete=models.PROTECT)
     purpose = models.CharField(max_length=50, choices=(
         ('Home', 'Home'),
         ('Job', 'Job'),

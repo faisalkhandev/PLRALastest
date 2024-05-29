@@ -1,11 +1,6 @@
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import { Box, Typography, Grid, Switch, Dialog } from "@mui/material";
-import {
-  Btn,
-  CheckBoxField,
-  HeadingBar,
-  InputField,
-} from "../../../../Components";
+import { Btn, CheckBoxField, DialogBox, HeadingBar, InputField, } from "../../../../Components";
 import Breadcrumb from "../../../../Components/Common/BreadCrumb";
 import { useTheme } from "@emotion/react";
 import SimpleDropdown from "../../../../Components/Common/SimpleDropDown";
@@ -20,17 +15,20 @@ import { usePostContactInformationMutation } from "../../../../Features/API/API"
 import { useParams } from "react-router-dom";
 import { Warning } from "../../../../Assets/Icons/index.jsx";
 import InputMask from "react-input-mask";
+import { showToast } from "../../../../Components/shared/Toast_Card.jsx";
+import StatusCodeHandler from "../../../../Components/Common/StatusCodeHandler.jsx";
 
 const Contact_Form = () => {
   const theme = useTheme();
   const { id } = useParams();
+  const [formErrors, setFormErrors] = useState({});
 
   //States
   const [activeBoxIndex, setActiveBoxIndex] = useState(0);
   const [formData, setFormData] = useState({
-    purpose: "",
-    type: "",
-    contact_no_address: "",
+    purpose: null,
+    type: null,
+    contact_no_address: null,
     is_primary: false,
     employee: id,
   });
@@ -41,20 +39,21 @@ const Contact_Form = () => {
   const [isRowSelected, setIsRowSelected] = useState(false);
 
   //Queries
-  const {
-    data: ContactData,
-    isLoading: Contactloading,
-    isError: ContactrefreshError,
-    error: ContactqueryError,
-    refetch: Contactrefetch,
-  } = useGetContactInformationQuery(id);
+  const { data: ContactData, isLoading: Contactloading, isError: ContactrefreshError, error: ContactqueryError, refetch: Contactrefetch, } = useGetContactInformationQuery(id);
   const [updateContactInformation] = useUpdateContactInformationMutation();
   const [postInformation] = usePostContactInformationMutation();
   const [deleteContactInformation] = useDeleteContactInformationMutation();
 
   //Functions
 
+  useEffect(() => {
+    Contactrefetch();
+  }, []);
+
+
+
   const resetForm = () => {
+    setFormErrors({});
     setSelectedRowID(null);
     setIsRowSelected(false);
     setActiveBoxIndex(null);
@@ -86,85 +85,45 @@ const Contact_Form = () => {
   const handlePostData = async (e) => {
     if (isRowSelected) {
       try {
-        const res = await updateContactInformation({
-          selectRowID,
-          updateContactInformation: formData,
-        });
-        if (res.error) {
-          if (res.error.status === 400) {
-            toast.error("Record not updated.", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          } else {
-            toast.error("Something is wrong!!!", {
-              position: "top-center",
-              autoClose: 3000,
-            });
+        const res = await updateContactInformation({ selectRowID, updateContactInformation: formData, });
+        if (res?.error && res.error.status) {
+          if (res?.error?.status === 422 && res?.error?.data?.code) {
+            return (showToast(`${res?.error?.data?.detail}`, "error"));
           }
+          if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+            return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+          }
+          setFormErrors(res?.error)
+          return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
         } else {
-          toast.success("Record updated successfully.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-          setFormData({
-            purpose: "",
-            type: "",
-            contact_no_address: "",
-            is_primary: false,
-            employee: id,
-          });
+          showToast(`Record updated Successfully`, "success");
+          setFormData({ purpose: "", type: "", contact_no_address: "", is_primary: false, employee: id, });
           setIsRowSelected(false);
-
           Contactrefetch();
         }
       } catch (err) {
-        console.log(err);
+        return showToast(`${err.message}`, "error");
       }
     } else {
-      if (
-        formData.purpose == "" ||
-        formData.type == "" ||
-        formData.contact_no_address == "" ||
-        formData.education_end_date == ""
-      ) {
-        toast.error("Mandatory field's should not be empty.", {
-          position: "top-center",
-          autoClose: 3000,
-        });
-      } else {
-        try {
-          const res = await postInformation(formData);
-          if (res.error) {
-            if (res.error.status === 400) {
-              toast.error("Record not updated.", {
-                position: "top-center",
-                autoClose: 3000,
-              });
-            } else {
-              toast.error("Something is wrong!!!", {
-                position: "top-center",
-                autoClose: 3000,
-              });
-            }
-          } else {
-            toast.success("Record created successfully.", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-            setFormData({
-              purpose: "",
-              type: "",
-              contact_no_address: "",
-              is_primary: false,
-              employee: id,
-            });
-            setIsRowSelected(false);
-            Contactrefetch();
+      try {
+        const res = await postInformation(formData);
+        if (res?.error && res.error.status) {
+          if (res?.error?.status === 422 && res?.error?.data?.code) {
+            return (showToast(`${res?.error?.data?.detail}`, "error"));
           }
-        } catch (err) {
-          console.log(err);
+          if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+            return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+          }
+          setFormErrors(res?.error)
+          return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+        } else {
+          showToast(`Record created Successfully`, "success");
+          setFormData({ purpose: "", type: "", contact_no_address: "", is_primary: false, employee: id, });
+          setIsRowSelected(false);
+          Contactrefetch();
         }
+      } catch (err) {
+        return showToast(`${err.message}`, "error");
       }
     }
   };
@@ -191,41 +150,17 @@ const Contact_Form = () => {
       // call api
       const res = await deleteContactInformation({ selectRowID });
       // error handling
-      if (res.error) {
-        if (res.error.status === 500) {
-          return toast.error("Server is not working", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record deletion failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
       // success call
-      toast.success("Record Deleted successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-      setFormData({
-        purpose: "",
-        type: "",
-        contact_no_address: "",
-        is_primary: false,
-        employee: id,
-      });
+      showToast(`Record Deleted Successfully`, "success");
+      setFormData({ purpose: "", type: "", contact_no_address: "", is_primary: false, employee: id, });
       Contactrefetch();
       setIsRowSelected(false);
     } catch (err) {
-      console.error("Error Deleting Record:", err);
-      toast.error(err.message, { position: "top-center", autoClose: 3000 });
+      return showToast(`${err.message}`, "error");
     }
   };
 
@@ -262,40 +197,34 @@ const Contact_Form = () => {
           />
           {isRowSelected ? (
             <Btn type="delete" onClick={() => setDeleteDialog(true)} />
+
           ) : null}
+          {
+            deleteDialog ?
+              <DialogBox
+                open={deleteDialog}
+                onClose={() => setDeleteDialog(false)}
+                closeClick={() => setDeleteDialog(false)}
+                sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+                title={"Are you sure you want to delete the record?"}
+              /> : ''
+          }
         </Box>
       </Box>
 
       <Grid container columnSpacing={1} sx={{ height: "calc(100vh - 280px)" }}>
         <Grid item xs={4} md={2}>
           <Box className="form_sidebar">
-            {ContactData &&
-              ContactData.results &&
-              ContactData.results.length > 0 ? (
-              ContactData.results.map((record, index) => (
-                <Box
-                  key={record.id}
-                  sx={{
-                    borderBottom: "1px solid #e2e1e0",
-                    p: 1,
-                    width: "90%",
-                    cursor: "pointer",
-                  }}
-                  className={activeBoxIndex === index ? "Box_Class" : ""}
-                  onClick={() => handleBoxClick(record, index)}
-                >
-                  <Typography
-                    variant="h6"
-                    color="green"
-                    sx={{ textDecoration: "none" }}
-                  >
-                    {record.purpose}
-                  </Typography>
-                  <Typography variant="body2" color="initial">
-                    {record.contact_no_address}
-                  </Typography>{" "}
-                </Box>
-              ))
+            {ContactData && ContactData.results && ContactData.results.length > 0 ? (ContactData.results.map((record, index) => (
+              <Box key={record.id} sx={{ borderBottom: "1px solid #e2e1e0", p: 1, width: "90%", cursor: "pointer", }} className={activeBoxIndex === index ? "Box_Class" : ""} onClick={() => handleBoxClick(record, index)}  >
+                <Typography variant="h6" color="green" sx={{ textDecoration: "none" }}  >
+                  {record.purpose}
+                </Typography>
+                <Typography variant="body2" color="initial">
+                  {record.contact_no_address}
+                </Typography>{" "}
+              </Box>
+            ))
             ) : (
               <Typography sx={{ fontSize: '14px', m: 1, color: theme.palette.primary.main, fontWeight: 500 }}>Add Contact Information</Typography>
             )}
@@ -308,65 +237,17 @@ const Contact_Form = () => {
           </Grid>
           <Grid item xs={12}>
             <Grid container columnSpacing={6} sx={{ px: 2 }}>
-              <Grid
-                item
-                xs={12}
-                md={6}
-                sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-              >
-                <SimpleDropdown
-                  name="purpose"
-                  label="Purpose "
-                  disabled={disableFields}
-                  mandatory={true}
-                  value={formData.purpose}
-                  onChange={handleChange}
-                  options={Purpose}
-                />
+              <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }} >
+                <SimpleDropdown name="purpose" label="Purpose" disabled={disableFields} mandatory={true} value={formData.purpose} onChange={handleChange} options={Purpose} error={formErrors?.data?.purpose} helperText={formErrors?.data?.purpose} />
 
-                <InputField
-                  name="contact_no_address"
-                  label="Contact Address"
-                  disabled={disableFields}
-                  mandatory={true}
-                  value={formData.contact_no_address || ""}
-                  placeholder="Enter Contact Address"
-                  type="text"
-                  fullWidth
-                  onChange={handleChange}
-                />
+                <InputField name="contact_no_address" label="Contact Address" disabled={disableFields} mandatory={true} value={formData.contact_no_address || ""} placeholder="Enter Contact Address" type="text" fullWidth onChange={handleChange} error={formErrors?.data?.contact_no_address} />
               </Grid>
-              <Grid
-                item
-                xs={12}
-                md={6}
-                sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-              >
-                <SimpleDropdown
-                  name="type"
-                  label="Type"
-                  disabled={disableFields}
-                  mandatory={true}
-                  value={formData.type}
-                  onChange={handleChange}
-                  options={types}
-                />
+              <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }} >
+                <SimpleDropdown name="type" label="Type" disabled={disableFields} mandatory={true} value={formData.type} onChange={handleChange} options={types} error={formErrors?.data?.type} helperText={formErrors?.data?.type} />
 
                 <Box className="inputBox" sx={{ mt: 1 }}>
                   <Typography sx={{ fontSize: "14px" }}>Is Primary:</Typography>
-                  <Switch
-                    sx={{ ml: 9 }}
-                    size="small"
-                    checked={formData.is_primary}
-                    disabled={disableFields}
-                    onClick={() => {
-                      setFormData({
-                        ...formData,
-                        is_primary: !formData.is_primary,
-                      });
-                    }}
-                    name="active"
-                  />
+                  <Switch sx={{ ml: 9 }} size="small" checked={formData.is_primary} disabled={disableFields} onClick={() => { setFormData({ ...formData, is_primary: !formData.is_primary, }); }} name="active" />
                 </Box>
               </Grid>
             </Grid>
@@ -374,54 +255,9 @@ const Contact_Form = () => {
         </Grid>
 
         <Grid item xs={12} md={3}>
-          <EmployeeFormDashboard />
+          <EmployeeFormDashboard userId={id} title="Processess" />
         </Grid>
       </Grid>
-      <Dialog
-        open={deleteDialog}
-        onClose={() => setDeleteDialog(false)}
-        sx={{ m: "auto" }}
-      >
-        <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Warning />
-            Are you sure to delete record.
-          </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleDeleteData();
-                setDeleteDialog(false);
-              }}
-              outerStyle={{
-                border: "2px solid ${theme.palette.primary.light}",
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setDeleteDialog(false)}
-              outerStyle={{
-                border: "2px solid ${theme.palette.error.light}",
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Box>
-      </Dialog>
     </div>
   );
 };

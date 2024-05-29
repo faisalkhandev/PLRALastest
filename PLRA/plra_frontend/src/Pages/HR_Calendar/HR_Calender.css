@@ -1,0 +1,7 @@
+@media print {
+    .print-page-HR {
+        text-align: justify;
+        margin: 80px;
+        page-break-before: always;
+    }
+  }

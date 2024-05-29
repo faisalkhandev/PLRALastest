@@ -8,7 +8,8 @@ class HRCelanderYear(models.Model):
     hr_celander_ending_date = models.DateField()
     hr_year = models.IntegerField()
     active = models.BooleanField()
-
+    class Meta:
+        verbose_name = 'HR Calendar Year'
     def __str__(self):
         return f"HRCalender Year {self.hr_year}: {self.hr_celander_starting_date} to {self.hr_celander_ending_date}"
 
@@ -55,7 +56,7 @@ class Holiday(models.Model):
     holiday_to_date = models.DateField()
     holiday_type = models.CharField(max_length=50)
     allowed_to = models.CharField(max_length=20, choices=ALLOWED_CHOICES)
-
+    
     def save(self, *args, **kwargs):
         week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 

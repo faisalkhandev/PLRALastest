@@ -6,7 +6,7 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://127.0.0.1:8000/",
     prepareHeaders: (headers, { getState }) => {
-      const authToken = sessionStorage.getItem("authToken");
+      const authToken = Cookies.get("authToken");
       const csrfToken = Cookies.get("csrftoken");
       if (authToken && csrfToken) {
         headers.set("Authorization", `Token ${authToken}`);
@@ -242,6 +242,13 @@ export const api = createApi({
         body: updateContactInformation,
       }),
     }),
+
+    getCurrentDate: builder.query({
+      query: () => ({
+        url: "/dashboards/current-date/",
+        method: 'GET',
+      })
+    }),
   }),
 });
 
@@ -261,4 +268,5 @@ export const {
   useGetJobDistrictQuery,
   usePostJobDistrictMutation,
   useUpdateJobDistrictMutation,
+  useGetCurrentDateQuery,
 } = api;

@@ -12,8 +12,8 @@ const Multi_Dropdown = ({ isOpen, onClose, tableRows, tableHeader, onSelect, Row
   const rowHeight = 25;
   const theme = useTheme();
   return (
-    <Dialog open={isOpen} onClose={onClose} sx={{ minWidth: MinimumWidth, m: 'auto',  maxHeight:"500px" }}>
-      <DialogContent sx={{ minWidth: MinimumWidth }}>
+    <Dialog open={isOpen} onClose={onClose} sx={{ minWidth: MinimumWidth, m: 'auto', minHeight: "550px", maxHeight: "550px" }}>
+      <DialogContent sx={{ minWidth: MinimumWidth,maxWidth: MinimumWidth }}>
         {
           tableRows && tableRows.length > 0 ? (
             <DataGrid
@@ -25,10 +25,11 @@ const Multi_Dropdown = ({ isOpen, onClose, tableRows, tableHeader, onSelect, Row
               pageSizeOptions={[10, 20, 30]}
               onRowClick={handleRowClick}
               sx={{ overflow: 'hidden', cursor: 'pointer' }}
+              initialState={{ pagination: { paginationModel: { page: 0, pageSize: 15 } } }}
               getRowId={getRowId}
             />
           ) : (
-            <Box sx={{ p:3, textAlign:'center', fontSize:'18px' }}>No Record Found</Box>
+            <Box sx={{ p: 3, textAlign: 'center', fontSize: '18px' }}>No Record Found</Box>
           )
         }
       </DialogContent>
@@ -36,4 +37,3 @@ const Multi_Dropdown = ({ isOpen, onClose, tableRows, tableHeader, onSelect, Row
   );
 };
 export default Multi_Dropdown;
-

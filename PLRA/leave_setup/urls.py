@@ -24,6 +24,7 @@ router.register('LeaveListApi', LeaveApplyWithApprovalsAPI, basename="LeaveApply
 urlpatterns = [
     path('', include(router.urls)),
     path('leave-balances/<int:employee_id>/', LeaveBalancesAPIView.as_view(), name='leave-balances'),
+    path('leave-types-at-apply/', LeaveShowApplyTimeApi.as_view(), name='leave-types-at-apply'),
     # path('LeaveListApi', LeaveApplyWithApprovalsAPI.as_view()),
 
     # Add more URL patterns if needed

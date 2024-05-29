@@ -6,13 +6,12 @@ export const SetupApi = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: "http://127.0.0.1:8000/",
         prepareHeaders: (headers, { getState }) => {
-            const authToken = sessionStorage.getItem("authToken");
+            const authToken = Cookies.get("authToken");
             const csrfToken = Cookies.get("csrftoken");
             if (authToken && csrfToken) {
                 headers.set("Authorization", `Token ${authToken}`);
                 headers.set("X-CSRFToken", csrfToken);
             }
-            headers.set("Content-Type", "application/json");
             return headers;
         },
     }),
@@ -20,7 +19,7 @@ export const SetupApi = createApi({
         // Get All Leave Types
         LeaveType: builder.query({
             query: () => ({
-                url: "/leave/LeaveTypeAPI/",
+                url: "/leave/leave-types-at-apply/",
                 method: "GET",
             }),
         }),
@@ -92,8 +91,111 @@ export const SetupApi = createApi({
         }),
 
 
+        //GetHRCalenderYear
+        getHrCalenderYear: builder.query({
+            query: () => ({
+                url: "/hr-celander/hr-celander-year/",
+                method: 'GET',
+            })
+        }),
+
+        //postHRCalenderYear
+        postHRCalenderYear: builder.mutation({
+            query: (formData) => ({
+                url: '/hr-celander/hr-celander-year/',
+                method: 'POST',
+                body: formData,
+            })
+        }),
+
+        //updateHRCalenderYear
+        updateHRCalenderYear: builder.mutation({
+            query: ({ id, updateData }) => ({
+                url: `/hr-celander/hr-celander-year/${id}/`,
+                method: "PUT",
+                body: updateData
+            }),
+        }),
+
+        //deleteHRCalenderYear
+        deleteHRCalenderYear: builder.mutation({
+            query: ({ selectRowID }) => ({
+                url: `/hr-celander/hr-celander-year/${selectRowID}/`,
+                method: 'DELETE',
+            })
+        }),
 
 
+
+        //Hr Add Holiday
+        getHrAddHoliday: builder.query({
+            query: () => ({
+                url: "/hr-celander/hr-add-holiday/",
+                method: 'GET',
+            })
+        }),
+
+        //postHRCalenderYear
+        postHrAddHoliday: builder.mutation({
+            query: (updateAddHoliday) => ({
+                url: '/hr-celander/hr-add-holiday/',
+                method: 'POST',
+                body: updateAddHoliday,
+            })
+        }),
+
+        //updateHRCalenderYear
+        updateHrAddHoliday: builder.mutation({
+            query: ({ id, updateData }) => ({
+                url: `/hr-celander/hr-add-holiday/${id}/`,
+                method: "PUT",
+                body: updateData
+            }),
+        }),
+
+        //deleteHRCalenderYear
+        deleteHrAddHoliday: builder.mutation({
+            query: ({ selectRowID }) => ({
+                url: `/hr-celander/hr-add-holiday/${selectRowID}/`,
+                method: 'DELETE',
+            })
+        }),
+
+
+        //AAR Prescribed Form API
+        //Get AarPrescribedForm 
+        getAarPrescribedForm: builder.query({
+            query: () => ({
+                url: "/annual-assessment/aar-prescribed-forms/",
+                method: 'GET',
+            })
+        }),
+
+        postAarPrescribedForm: builder.mutation({
+            query: (updateAarPrescribedForm) => ({
+                url: '/annual-assessment/aar-prescribed-forms/',
+                method: 'POST',
+                body: updateAarPrescribedForm,
+            })
+        }),
+
+        updateAarPrescribedForm: builder.mutation({
+            query: ({ id, updateData }) => ({
+                url: `/annual-assessment/aar-prescribed-forms/${id}/`,
+                method: "PUT",
+                body: updateData
+            }),
+        }),
+
+        deleteAarPrescribedForm: builder.mutation({
+            query: ({ selectRowID }) => ({
+                url: `/annual-assessment/aar-prescribed-forms/${selectRowID}/`,
+                method: 'DELETE',
+            })
+        }),
+
+
+        //SalaryDeductible 
         GetSalaryDeductible: builder.query({
             query: () => ({
                 url: "/leave/SalaryDeductibleAPI/",
@@ -164,8 +266,8 @@ export const SetupApi = createApi({
         }),
         approvalsById: builder.query({
             query: (leave_request_id) => ({
-                // url: `/leave/LeaveListApi/?leave_request_id=${leave_request_id}`,
-                url: `/leave/LeaveListApi/?leave_request_id=1`,
+                url: `/leave/LeaveListApi/?leave_request_id=${leave_request_id}`,
+                // url: `/leave/LeaveListApi/?leave_request_id=1`,
                 method: "GET",
             }),
         }),
@@ -181,8 +283,14 @@ export const SetupApi = createApi({
 
         //LeaveAPIList
         getLeaveListApi: builder.query({
-            query: () => ({
-                url: '/leave/LeaveListApi/',
+            query: (user_id) => ({
+                url: `/leave/LeaveListApi/?employee__id=${user_id}`,
+                method: 'GET'
+            })
+        }),
+        gethrdirLeaveListApi: builder.query({
+            query: (user_id) => ({
+                url: `/leave/LeaveListApi`,
                 method: 'GET'
             })
         }),
@@ -195,7 +303,14 @@ export const SetupApi = createApi({
                 body: formData
             })
         }),
-        //superApproval
+        approvalsleavePut: builder.mutation({
+            query: ({ formData, id }) => ({
+                url: `/leave/approvals/${id}/`,
+                method: 'PUT',
+                body: formData
+            })
+        }),
+        //superApprovalPending
         getSuperApprovalApi: builder.query({
             query: (user_id) => ({
                 url: `/leave/super-approvals/?approving_authority__id=${user_id}&visible=true`,
@@ -203,14 +318,20 @@ export const SetupApi = createApi({
                 method: 'GET'
             })
         }),
-
-        //superApproval
-        getSuperApprovalApi: builder.query({
-            query: () => ({
-                url: '/leave/super-approvals/',
+        getSuperApprovalHistoryApi: builder.query({
+            query: (user_id) => ({
+                url: `/leave/super-approvals/?approving_authority__id=${user_id}&visible=false`,
                 method: 'GET'
             })
         }),
+
+        getSuperApprovalAdditionalPositionApi: builder.query({
+            query: (user_id) => ({
+                url: `/leave/super-approvals/?approving_authority__id=${user_id}&visible=false&ready_for_position_assignment=true`,
+                method: 'GET'
+            })
+        }),
+
 
         //superApprovalByID
         getSuperApprovalByID: builder.query({
@@ -225,7 +346,7 @@ export const SetupApi = createApi({
                 method: "GET",
             }),
         }),
-
+ 
         //miniDashboard
         getEmployeeDataByID: builder.query({
             query: (id) => ({
@@ -235,12 +356,23 @@ export const SetupApi = createApi({
         }),
 
         //Medical or Casual Data
+        // getCasualMedicalLeave: builder.query({
+        //     query: (fillter) => ({
+        //         url: `/leave/LeaveListApi/?leave_type__leave_type__iexact=${fillter}`,
+        //         method: 'GET'
+        //     })
+        // }),
+
         getCasualMedicalLeave: builder.query({
-            query: (fillter) => ({
-                url: `/leave/LeaveListApi/?leave_type__leave_type__iexact=${fillter}`,
+            query: ({fillter, userID}) => ({
+                url: `/leave/LeaveListApi/?leave_type__leave_type__iexact=${fillter}&employee__id=${userID}`,
                 method: 'GET'
             })
         }),
+        
+        
+        
+
         leave_count_post: builder.mutation({
             query: (leavecount_data) => ({
                 url: `/leave/leave-count/`,
@@ -265,7 +397,7 @@ export const SetupApi = createApi({
         }),
         leave_approvals_delete: builder.mutation({
             query: (leave_approvals_id) => ({
-                url: `/leave/leave-approvals/${leave_approvals_id}`,
+                url: `/leave/leave-count/${leave_approvals_id}`,
                 method: 'DELETE'
             })
         }),
@@ -334,8 +466,11 @@ export const {
     usePostLeaveApplyMutation,
     useGetLeaveListApiQuery,
     useApprovalsPutMutation,
+    useApprovalsleavePutMutation,
     useGetAllEmployeeByCenterIDQuery,
     useGetSuperApprovalApiQuery,
+    useGetSuperApprovalHistoryApiQuery,
+    useGetSuperApprovalAdditionalPositionApiQuery,
     useGetSuperApprovalByIDQuery,
     useGetEmployeeDataByIDQuery,
     useGetCasualMedicalLeaveQuery,
@@ -350,4 +485,17 @@ export const {
     usePostCompetentAuthorityMutation,
     useGetCompetentAuthorityQuery,
     useDeleteCompetentAuthorityMutation,
+    useGetHrCalenderYearQuery,
+    usePostHRCalenderYearMutation,
+    useUpdateHRCalenderYearMutation,
+    useDeleteHRCalenderYearMutation,
+    useGetHrAddHolidayQuery,
+    usePostHrAddHolidayMutation,
+    useUpdateHrAddHolidayMutation,
+    useDeleteHrAddHolidayMutation,
+    useGetAarPrescribedFormQuery,
+    usePostAarPrescribedFormMutation,
+    useUpdateAarPrescribedFormMutation,
+    useDeleteAarPrescribedFormMutation,
+    useGethrdirLeaveListApiQuery
 } = SetupApi;

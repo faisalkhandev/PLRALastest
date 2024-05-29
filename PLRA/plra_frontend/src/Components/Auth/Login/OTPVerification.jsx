@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Grid, Typography } from '@mui/material';
-import Logo from '../../../Assets/png/Logo1.png';
 import { useTheme } from '@emotion/react';
-import { useNavigate } from 'react-router-dom';  
+import { useNavigate } from 'react-router-dom';
 import OTPInput from 'react-otp-input';
 import Btn from '../../Common/Btn'
 import { useOtpMutation } from '../../../Features/API/Authentication';
@@ -13,6 +12,7 @@ const OPTVerification = ({ onStepChange }) => {
   const theme = useTheme();
   const [otp, setOtp] = useState('');
   const [timer, setTimer] = useState(100);
+  const [loading, setLoading] = useState(false);
   const [otpVerification] = useOtpMutation()
   const navigate = useNavigate();
 
@@ -22,40 +22,43 @@ const OPTVerification = ({ onStepChange }) => {
     if (timer === -1) { onStepChange(1); }
     return () => clearInterval(countdown);
   }, [timer, onStepChange]);
-
   const handleSaveData = async (e) => {
     e.preventDefault();
+    toast.dismiss();
     if (otp === '') {
       toast.error(`Mandatory fields should not be empty.`, {
         position: 'top-center',
         autoClose: 3000,
       });
-    } else {
-      try {
-        const csrftoken = Cookies.get('csrftoken');
-        const formdata = { otp: otp };
-        const res = await otpVerification({ formdata, csrftoken });
-        const ID = res.data?.user?.id;
+      return;
+    }
 
-        if (res.error) {
-          if (res.error.status === 400) {
-            toast.error('Provide Enter Correct OTP!', { position: 'top-center', autoClose: 3000 });
-          }
-        } else {
-          const authToken = res.data?.Authorization;
-          if (authToken) {
-            sessionStorage.setItem('authToken', authToken)
-            sessionStorage.setItem('UserID', ID)
-          }
-          onStepChange(3);
-          toast.success('Enter OTP to Login to your Dashboard', { position: 'top-center', autoClose: 3000, });
+    setLoading(true);  // Start loading
+    try {
+      const csrftoken = Cookies.get('csrftoken');
+      const formdata = { otp: otp };
+      const res = await otpVerification({ formdata, csrftoken });
+
+      if (res.error) {
+        if (res.error.status === 400) {
+          toast.error('Provide Enter Correct OTP!', { position: 'top-center', autoClose: 2000 });
         }
-      } catch (err) {
-        console.error('Error verifying OTP:', err);
-        toast.error('Error verifying OTP', { position: 'top-center', autoClose: 3000 });
+      } else {
+        const authToken = res.data?.Authorization;
+        if (authToken) {
+          // Perform additional actions if needed
+        }
+        onStepChange(3);
+        toast.success('Login Successfully', { position: 'top-center', autoClose: 3000 });
       }
+    } catch (err) {
+      console.error('Error verifying OTP:', err);
+      toast.error('Error verifying OTP', { position: 'top-center', autoClose: 3000 });
+    } finally {
+      setLoading(false);  // Stop loading irrespective of outcome
     }
   };
+
   const handleBack = () => onStepChange(1)
 
 
@@ -63,7 +66,7 @@ const OPTVerification = ({ onStepChange }) => {
     <Box sx={{ with: '100%', height: '100vh', overflow: 'hidden', mt: 0 }}>
       <Grid container spacing={6}>
         <Grid item xs={12} md={6} sx={{ width: '100%', height: '107vh', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: theme.palette.primary[200] }}>
-          <img src={Logo} alt="" style={{ width: '450px' }} />
+          <img src={"/static/Logo.png"} alt="" style={{ width: '450px' }} />
         </Grid>
         <Grid item xs={12} md={6} sx={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', px: 2 }}>
           <Box sx={{ width: "100%", mt: 3, ml: "-50px" }} onClick={handleBack}>
@@ -91,7 +94,17 @@ const OPTVerification = ({ onStepChange }) => {
             <Typography variant="body1" color="initial" sx={{ fontSize: '16px', textAlign: 'center', opacity: '0.5', marginTop: '10px' }}>
               Remaining Time: {Math.floor(timer / 60)}:{timer % 60 < 10 ? `0${timer % 60}` : timer % 60}
             </Typography>
-            <button className="loginButton" onClick={handleSaveData}>Verify OTP</button>
+            <button
+              className="loginButton"
+              onClick={handleSaveData}
+              disabled={loading}
+              style={{
+                backgroundColor: loading ? '#ccc' : '#379237', // '#ccc' is a light gray color
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </button>
           </Box>
         </Grid>
       </Grid>

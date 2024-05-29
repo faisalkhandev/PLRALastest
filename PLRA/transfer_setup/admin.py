@@ -42,11 +42,11 @@ class E_Transfer_ProcessAdmin(admin.ModelAdmin):
     search_fields = ('employee__first_name', 'employee__last_name', 'status', 'transfer_position__name', 'transfer_category')
 
 class ConcernOfficerApprovalAdmin(admin.ModelAdmin):
-    list_display = ('e_transfer_process', 'visible', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date', 'remarks', 'status')
-    search_fields = ('e_transfer_process__employee__first_name', 'e_transfer_process__employee__last_name', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date', 'remarks', 'status')
-class HRDirectorETransferApprovalAdmin(admin.ModelAdmin):
-    list_display = ('e_transfer_process', 'visible', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date', 'remarks', 'status')
-    search_fields = ('e_transfer_process__employee__first_name', 'e_transfer_process__employee__last_name', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date', 'remarks', 'status')
+    list_display = ('e_transfer_process', 'visible', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date')
+    search_fields = ('e_transfer_process__employee__first_name', 'e_transfer_process__employee__last_name', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date')
+# class HRDirectorETransferApprovalAdmin(admin.ModelAdmin):
+#     list_display = ('e_transfer_process', 'visible', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date')
+#     search_fields = ('e_transfer_process__employee__first_name', 'e_transfer_process__employee__last_name', 'max_marks', 'marks_obtain', 'e_transfer_approval_date', 'new_joining_effective_date')
 
 class E_Transfer_Rating_MatrixAdmin(admin.ModelAdmin):
     list_display = ('employee', 'e_transfer_process', 'category', 'max_marks', 'system_generated_marks', 'concerned_person_marks')
@@ -68,6 +68,6 @@ admin.site.register(TransferRatingModelType, TransferRatingModelTypeAdmin)
 admin.site.register(E_Transfer_Window_Period, E_Transfer_Window_PeriodAdmin)
 admin.site.register(E_Transfer_Process, E_Transfer_ProcessAdmin)
 admin.site.register(ConcernOfficerApproval, ConcernOfficerApprovalAdmin)
-admin.site.register(HRDirectorETransferApproval, HRDirectorETransferApprovalAdmin)
+admin.site.register(HRDirectorETransferApproval)
 admin.site.register(E_Transfer_Rating_Matrix, E_Transfer_Rating_MatrixAdmin)
 admin.site.register(Address, AddressAdmin)

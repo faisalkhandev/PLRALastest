@@ -17,7 +17,7 @@ const PasswordVerification = ({ onStepChange }) => {
     <Box sx={{ with: '100%', height: '100vh', overflow: 'hidden', mt: 0 }}>
       <Grid container spacing={6}>
         <Grid item xs={12} md={6} sx={{ width: '100%', height: '107vh', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: theme.palette.primary[200] }}>
-          <img src={Logo} alt="" style={{ width: '450px' }} />
+          <img src={"static/Logo.png"} alt="" style={{ width: '450px' }} />
         </Grid>
         <Grid item xs={12} md={6} sx={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', px: 2 }}>
           <Box sx={{ width: '60%', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2 }}>

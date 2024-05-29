@@ -9,14 +9,17 @@ import {
 import { useGroupAPIQuery } from '../../../../Features/API/RoleManagement.js'
 import SimpleDropdown from "../../../../Components/Common/SimpleDropDown.jsx";
 import { useTheme } from "@emotion/react";
-import { toast } from 'react-toastify'
 import { useNavigate } from "react-router-dom";
 import "../../Styles.css";
 import Select from 'react-select'
+import makeAnimated from 'react-select/animated';
+import { showToast } from "../../../../Components/shared/Toast_Card.jsx";
+import StatusCodeHandler from './../../../../Components/Common/StatusCodeHandler';
 
 
 
 const BasicInformation = () => {
+  const [formErrors, setFormErrors] = useState({});
   const navigate = useNavigate();
   const theme = useTheme();
   const goBack = () => { window.history.go(-1) };
@@ -26,14 +29,15 @@ const BasicInformation = () => {
   const [isActive, setIsActive] = useState(false);
   const [states, setStates] = useState({ center: "", position: "", reportingofficer: "", counterassigning: "" });
   const [centerDialog, setIsCenterDialog] = useState(false);
+  const animatedComponents = makeAnimated();
 
   const [formData, setFormData] = useState({
-    password: "", last_login: "", employee_no: "", cnic: "", date_of_joining: "", center: "",
-    employee_title: "", center: "", e_t_rec_id: null, is_active: false, is_superuser: false, position: "",
-    reporting_officer: "", counter_assigning_officer: "", first_name: "", last_name: "", father_name: "", is_staff: "",
-    passport_number: "", service_duration: "", domicile_district: "", phoneNumber: "", employee_image: "",
-    employee_cnic_front_image: "", employee_cnic_back_image: '"', employee_domicile_image: "", role: "", group: ""
-  });
+    password: null, employee_no: "", cnic: "", date_of_joining: null, center: null, passport_number: null,
+    title: "", center: null, e_t_rec_id: null, is_active: false, is_superuser: false, position: null,
+    reporting_officer: null, counter_assigning_officer: null, first_name: "", last_name: "", father_name: "", is_staff: null,
+    passport_number: null, service_duration: null, domicile_district: "", phoneNumber: null, employee_image: null,
+    employee_cnic_front_image: null, employee_cnic_back_image: null, employee_domicile_image: null, role: null, group: [],
+  }); 
 
 
   //Queries
@@ -46,17 +50,22 @@ const BasicInformation = () => {
 
   // functions
   const EmployeeTitle = EmployeeTitleData ? EmployeeTitleData.results.map(item => {
-    return { id: item.e_t_rec_id, value: item.employee_title, label: item.employee_title };
+    return {
+      id: item?.e_t_rec_id,
+      value: item?.employee_title,
+      label: item?.employee_title
+    };
   }) : null;
 
-  const RolesData = RoleData ? RoleData.results.map(item => {
-    return { id: item.id, value: item.name, label: item.name };
-  }) : null;
+  const options = RoleData?.results?.map(role => ({
+    value: role?.id,
+    label: role?.name
+  })) || [];
 
   const handleFileChange = (e) => {
-    const fieldName = e.target.name;
+    const fieldName = e?.target?.name;
     setFormData(() => ({
-      ...formData, [fieldName]: e.target.files[0],
+      ...formData, [fieldName]: e?.target?.files[0],
     }));
   };
 
@@ -67,24 +76,23 @@ const BasicInformation = () => {
 
   const handleTitleChange = (event) => {
     const { name, value } = event.target;
-    if (name === "employee_title") {
+    if (name === "title") {
       const selectedTitle = EmployeeTitleData?.results.find((title) => title.employee_title === value);
       const e_t_rec_id = selectedTitle ? selectedTitle.e_t_rec_id : null;
 
-      setFormData((prevData) => ({
-        ...prevData, employee_title: value, e_t_rec_id: e_t_rec_id,
-      }));
+      setFormData((prevData) => ({ ...prevData, title: value, e_t_rec_id: e_t_rec_id }));
     }
   };
 
-  const handleRoleChange = (event) => {
-    const { name, value } = event.target;
-    const selectedRole = RoleData?.results.find((role) => role.name === value);
-    const roleId = selectedRole ? selectedRole.id : null;
-    setFormData((prevData) => ({
-      ...prevData, group: roleId, role: value
+  const handleRoleChange = (selectedOptions) => {
+    const selectedValues = selectedOptions ? selectedOptions.map(option => option.value) : [];
+    setFormData(prevData => ({
+      ...prevData,
+      group: selectedValues
     }));
   };
+  
+
 
   const CenterClickhandler = (selectedRow) => {
     setFormData({ ...formData, center: selectedRow.c_rec_id })
@@ -93,65 +101,74 @@ const BasicInformation = () => {
   };
 
   const handlePostData = async (e) => {
-    if (
-      formData.first_name === '' ||
-      formData.last_name === '' ||
-      formData.father_name === '' ||
-      formData.cnic === '' ||
-      formData.passport_number === '' ||
-      formData.center === ''
-    ) {
-      toast.error(`Mandatory fields should not be empty.`, { position: "top-center", autoClose: 3000 });
-    } else {
-      try {
-        e.preventDefault();
-        let formD = new FormData();
-        formD.append('first_name', formData.first_name);
-        formD.append('password', formData.cnic);
-        formD.append('last_name', formData.last_name);
-        formD.append('cnic', formData.cnic);
-        formD.append('date_of_joining', formData.date_of_joining);
-        formD.append('father_name', formData.father_name);
-        formD.append('domicile_district', formData.domicile_district);
-        if ((typeof formData.employee_domicile_image !== 'string') && formData.employee_domicile_image != null) {
-          formD.append("employee_domicile_image", formData.employee_domicile_image);
-        }
-        if ((typeof formData.employee_image !== 'string') && formData.employee_image != null) {
-          formD.append("employee_image", formData.employee_image);
-        }
-        if ((typeof formData.employee_cnic_front_image !== 'string') && formData.employee_cnic_front_image != null) {
-          formD.append("employee_cnic_image_front", formData.employee_cnic_front_image);
-        }
-        if ((typeof formData.employee_cnic_back_image !== 'string') && formData.employee_cnic_back_image != null) {
-          formD.append("employee_cnic_image_back", formData.employee_cnic_back_image);
-        }
-        formD.append('date_of_joining', formData.date_of_joining);
-        formD.append('center', formData.center);
-        formD.append('last_login', formData.last_login);
-        formD.append('passport_number', formData.passport_number);
-        formD.append('is_active', formData.is_active);
-        formD.append('phoneNumber', formData.phoneNumber);
-        formD.append('employee_no', formData.employee_no);
-        formD.append('employee_title', formData.e_t_rec_id);
-        formD.append('role', Roles);
-
-        const res = await EmployeePost(formD);
-
-        if (res.error && res.error.status === 400) {
-          return toast.error('Record not created.', { position: 'top-center', autoClose: 3000, });
-        } else {
-          toast.success('Record created successfully.', { position: 'top-center', autoClose: 3000 });
-          navigate('/employee')
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error('Something went wrong!!!', { position: 'top-center', autoClose: 3000 });
+    try {
+      e.preventDefault();
+      let formD = new FormData();
+      let cnicWithoutHyphens = formData?.cnic?.replace(/-/g, '');
+      // Append form data
+      formD.append('first_name', formData.first_name);
+      formD.append('password', cnicWithoutHyphens);
+      formD.append('last_name', formData.last_name);
+      formD.append('cnic', cnicWithoutHyphens);
+      formD.append('date_of_joining', formData.date_of_joining);
+      formD.append('father_name', formData.father_name);
+      formD.append('domicile_district', formData.domicile_district);
+      // Append images if they are not null and not strings
+      if (formData.employee_domicile_image instanceof File) {
+        formD.append("employee_domicile_image", formData.employee_domicile_image);
       }
+      if (formData.employee_image instanceof File) {
+        formD.append("employee_image", formData.employee_image);
+      }
+      if (formData.employee_cnic_front_image instanceof File) {
+        formD.append("employee_cnic_image_front", formData.employee_cnic_front_image);
+      }
+      if (formData.employee_cnic_back_image instanceof File) {
+        formD.append("employee_cnic_image_back", formData.employee_cnic_back_image);
+      }
+      if (formData.e_t_rec_id) {
+        formD.append('title', formData.e_t_rec_id);
+      }
+      // Append other form fields
+      formD.append('date_of_joining', formData.date_of_joining);
+      formD.append('center', formData.center);
+      formD.append('is_active', formData.is_active);
+      formD.append('phoneNumber', formData.phoneNumber);
+      formD.append('passport_number', formData.passport_number);
+      formD.append('employee_no', formData.employee_no);
+      formD.append('title', formData.e_t_rec_id);
+
+      if (formData.group && Array.isArray(formData.group)) {
+        formData.group.forEach((group) => {
+          formD.append("groups", group.toString()); 
+        });
+      }
+
+      // Make POST request
+      const res = await EmployeePost(formD);
+
+      if (res?.error && res.error.status) {
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        // Handle API errors here
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+      } else {
+        showToast(`Record created Successfully`, "success");
+        resetForm();
+        navigate('/employee');
+      }
+    } catch (err) {
+      return showToast(`${err.message}`, "error");
     }
-  };
-  const handleRoleChangeDropDown = (selectedOptions) => {
-    const newArrayOfValues = selectedOptions?.map(item => (item.value)) || [];
-    setRoles(newArrayOfValues)
+  }
+
+  const resetForm = () => {
+    setFormErrors({});
   };
 
 
@@ -160,10 +177,7 @@ const BasicInformation = () => {
   return (
     <div className="customBox" style={{ maxWidth: "1300px", margin: '20px auto', height: "calc(100vh - 100px)" }}>
       <Box className="headContainer">
-        <Breadcrumb
-          title="Employee"
-          breadcrumbItem="Employee / Basic Information"
-        />
+        <Breadcrumb title="Employee" breadcrumbItem="Employee / Basic Information" />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Btn type="back" onClick={() => window.history.go(-1)} />
           <Btn type="save" onClick={handlePostData} />
@@ -184,24 +198,31 @@ const BasicInformation = () => {
                 <Grid item xs={12}>
                   <Grid container columnSpacing={6} sx={{ px: 2 }}>
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }} >
-                      <InputField name="employee_no" label="Employee No " onChange={handleChange} type="text" fullWidth mandatory />
-                      <SimpleDropdown name="employee_title" label="Title" value={formData.employee_title || ""} options={EmployeeTitle ? EmployeeTitle : ""} onChange={handleTitleChange} type="text" fullWidth />
-                      <InputField name="first_name" onChange={handleChange} label=" First Name " mandatory={true} type="text" fullWidth />
-                      <InputField name="last_name" label="Last Name" onChange={handleChange} mandatory={true} type="text" fullWidth />
-                      <InputField name="father_name" label="Father Name " onChange={handleChange} mandatory={true} type="text" fullWidth />
+                      <InputField name="employee_no" label="Employee No " onChange={handleChange} type="text" fullWidth mandatory error={formErrors?.data?.employee_no} />
+                      <SimpleDropdown name="title" label="Title" value={formData.title} options={EmployeeTitle ? EmployeeTitle : ""} onChange={handleTitleChange} type="text" fullWidth error={formErrors?.data?.title} helperText={formErrors?.data?.title} />
+                      <InputField name="first_name" onChange={handleChange} label=" First Name " mandatory={true} type="text" fullWidth error={formErrors?.data?.first_name} />
+                      <InputField name="last_name" label="Last Name" onChange={handleChange} mandatory={true} type="text" fullWidth error={formErrors?.data?.last_name} />
+                      <InputField name="father_name" label="Father Name" onChange={handleChange} mandatory={true} type="text" fullWidth error={formErrors?.data?.father_name} />
                     </Grid>
 
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2, }}>
                       <Box sx={{ width: '100%', display: 'flex', justifyContent: 'start', alignItems: 'center', flexDirection: 'row', }}>
-                        <label htmlFor="" style={{ fontSize: "14px", width: "228px" }}>CNIC <span style={{ fontSize: '18px', color: `${theme.palette.error.main}` }}>*</span> :</label>
-                        <InputMask mask="99999-9999999-9" name="cnic" value={formData.cnic} onChange={handleChange} type="text" className="FormInput" />
-                      </Box>
+                        <label htmlFor="" style={{ fontSize: "14px", width: "228px" }}>CNIC<span style={{ fontSize: '18px', color: `${theme.palette.error.main}` }}>*</span> :</label>
+                        <InputMask mask="99999-9999999-9" name="cnic" value={formData.cnic} onChange={handleChange} type="text" className="FormInput" style={{ border: formErrors?.data?.cnic ? '1px solid red' : '' }} />
+                      </Box> {formErrors?.data?.cnic && (<span style={{ color: 'red', marginLeft: '160px', marginTop: '-12px' }}>  {formErrors?.data?.cnic}  </span>)}
+
                       <Box sx={{ width: '100%', display: 'flex', justifyContent: 'start', alignItems: 'center', flexDirection: 'row', }}>
-                        <label htmlFor="" style={{ fontSize: "14px", width: "228px" }}>Phone Number <span style={{ fontSize: '18px', color: `${theme.palette.error.main}` }}>*</span> :</label>
-                        <InputMask mask="+999999999999" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} type="text" className="FormInput" placeholder="+92XXXXXXXXXX" />
+                        <label htmlFor="" style={{ fontSize: "14px", width: "228px" }}>Phone Number<span style={{ fontSize: '18px', color: `${theme.palette.error.main}` }}>*</span> :</label>
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'start', alignItems: 'start', flexDirection: 'column' }}>
+                          <InputMask mask="+999999999999" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} type="text" className="FormInput" placeholder="+92XXXXXXXXXX" error={formErrors?.data?.phoneNumber} style={{ border: formErrors?.data?.phoneNumber ? `1px solid ${theme.palette.error.main}` : '1px solid #ccc' }} />
+                          {formErrors?.data?.phoneNumber && ( // Displaying error message if present
+                            <span style={{ color: `${theme.palette.error.main}` }}>{formErrors.data.phoneNumber}</span>
+                          )}
+                        </div>
                       </Box>
-                      <InputField name="passport_number" label="Passport No" onChange={handleChange} mandatory={true} type="text" fullWidth />
-                      <InputField name="domicile_district" label="Domicile District " onChange={handleChange} mandatory={true} type="text" fullWidth />
+
+                      <InputField name="passport_number" label="Passport No" onChange={handleChange} type="text" fullWidth error={formErrors?.data?.passport_number} />
+                      <InputField name="domicile_district" label="Domicile District " onChange={handleChange} mandatory={true} type="text" fullWidth error={formErrors?.data?.domicile_district} />
                     </Grid>
                   </Grid>
                 </Grid>
@@ -211,17 +232,9 @@ const BasicInformation = () => {
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       {centerData && centerData.results ?
                         <div>
-                          <InputField name="center" mandatory={true} label="Center" required={true} type="text" isShowIcon={true} value={states.center || ""} onClick={() => { setIsCenterDialog(true); }} />
-                          <Multi_Dropdown
-                            isOpen={centerDialog}
-                            onClose={() => setIsCenterDialog(false)}
-                            MinimumWidth={'600px'}
-                            tableRows={centerData.results}
-                            tableHeader={CenterHeader}
-                            onSelect={CenterClickhandler}
-                            RowFilterWith='c_rec_id'
-                          />
-                        </div> : <InputField name="center" mandatory={true} label="Center " type="text" isShowIcon={true} value={states.center} />
+                          <InputField name="center" mandatory={true} label="Center" required={true} type="text" isShowIcon={true} value={states.center || ""} onClick={() => { setIsCenterDialog(true); }} error={formErrors?.data?.center} />
+                          <Multi_Dropdown isOpen={centerDialog} onClose={() => setIsCenterDialog(false)} MinimumWidth={'600px'} tableRows={centerData.results} tableHeader={CenterHeader} onSelect={CenterClickhandler} RowFilterWith='c_rec_id' />
+                        </div> : <InputField name="center" mandatory={true} label="Center " type="text" isShowIcon={true} value={states.center} error={formErrors?.data?.center} />
                       }
 
                       <Grid item xs={6} sx={{ display: 'flex', flexDirection: "row", alignItems: "center" }} >
@@ -230,45 +243,23 @@ const BasicInformation = () => {
                       </Grid>
                     </Grid>
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2, }} >
-
-                      {/* ReactSelect  */}
-                      <Box className="inputBox">
-                        <label htmlFor="" >Role</label>
-                        <Select
-                          options={SelectOptions}
-                          defaultInputValue={Roles}
-                          placeholder="Select Role"
-                          onChange={handleRoleChangeDropDown}
-                          isMulti
-                          isSearchable
-                          noOptionsMessage={() => "No Role Fonnd..."}
-                          styles={{
-                            control: (baseStyles, state) => ({
-                              ...baseStyles,
-                              Color: state.isFocused ? 'red' : "yellow",
-                              borderColor: 'green',
-                              padding: 2,
-                              width: "411px",
-                              height: "31px",
-                              minHeight: "unset",
-                              padding: '0px',
-                              cursor: 'pointer',
-                            }),
-                            multiValueRemove: (baseStyles, state) => ({
-                              ...baseStyles,
-                              Color: state.isFocused ? 'red' : "gray",
-                              backgroundColor: state.isFocused ? 'red' : "gray",
-                            }),
-                            menuList: (baseStyles) => ({
-                              ...baseStyles,
-                              padding: 0,
-                              maxHeight: "150px",
-                            }),
-                          }}
-                        />
+                      <Box sx={{ width: '100%', display: 'flex', justifyContent: 'start', alignItems: 'center', flexDirection: 'row', }}>
+                        <label htmlFor="" style={{ fontSize: "14px", width: "228px" }} >Role
+                          {/* <span style={{ fontSize: '18px', color: `${theme.palette.error.main}` }}>*</span>  */}
+                          :</label>
+                        <Box width={{ width: "100%" }}>
+                          <Select
+                            closeMenuOnSelect={false}
+                            components={animatedComponents}
+                            onChange={handleRoleChange}
+                            options={options}
+                            isMulti
+                          />
+                        </Box>
+                        {/* <InputMask mask="99999-9999999-9" name="cnic" value={formData.cnic} onChange={handleChange} type="text" className="FormInput" /> */}
                       </Box>
                       {/* <SimpleDropdown name="employee_title" label="Role" value={formData.role || ""} options={RolesData ? RolesData : ""} onChange={handleRoleChange} type="text" fullWidth /> */}
-                      <InputField name="date_of_joining" label="Date Of Joining" onChange={handleChange} placeholder="Enter Date Of Joining" type="date" fullWidth />
+                      <InputField name="date_of_joining" label="Date Of Joining" onChange={handleChange} placeholder="Enter Date Of Joining" type="date" fullWidth error={formErrors?.data?.date_of_joining} />
                     </Grid>
                   </Grid>
                 </Grid>
@@ -280,12 +271,12 @@ const BasicInformation = () => {
                 <Grid item xs={12} sx={{ mb: 3 }}>
                   <Grid container columnSpacing={6} sx={{ px: 2 }}>
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }}  >
-                      <InputField name="employee_image" label="Employee Image" onChange={handleFileChange} type="file" fullWidth />
-                      <InputField name="employee_domicile_image" label="Employee Domicile" onChange={handleFileChange} type="file" fullWidth />
+                      <InputField name="employee_image" label="Employee Image" onChange={handleFileChange} type="file" fullWidth error={formErrors?.data?.employee_image} />
+                      <InputField name="employee_domicile_image" label="Employee Domicile" onChange={handleFileChange} type="file" fullWidth error={formErrors?.data?.employee_domicile_image} />
                     </Grid>
                     <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <InputField name="employee_cnic_front_image" label="CNIC Back Image" onChange={handleFileChange} type="file" fullWidth />
-                      <InputField name="employee_cnic_back_image" label="CNIC Front Image" onChange={handleFileChange} type="file" fullWidth />
+                      <InputField name="employee_cnic_front_image" label="CNIC Front Image" onChange={handleFileChange} type="file" fullWidth error={formErrors?.data?.employee_cnic_front_image} />
+                      <InputField name="employee_cnic_back_image" label="CNIC Back Image" onChange={handleFileChange} type="file" fullWidth error={formErrors?.data?.employee_cnic_back_image} />
                     </Grid>
                   </Grid>
                 </Grid>

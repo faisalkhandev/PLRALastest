@@ -8,6 +8,8 @@ import {
     useLeave_approvals_viewQuery,
 } from '../../../Features/API/SetupApi';
 import { Warning } from '../../../Assets/Icons';
+import { showToast } from '../../../Components/Common/ToastCard';
+
 
 const Leave_Approvals = () => {
     const theme = useTheme();
@@ -63,8 +65,26 @@ const Leave_Approvals = () => {
     const handleDelete = async (row) => {
         handleCloseDeleteDialog();
         const leave_approvals_id = row?.id;
-        const response = await Leave_approvals_delete(leave_approvals_id)
-    }
+
+        try {
+            const response = await Leave_approvals_delete(leave_approvals_id);
+
+            if (response?.error?.data?.status === 409) {
+                showToast(`${response?.error?.data?.detail}`, "error");
+                return;
+            }
+            if (response?.error) {
+                showToast("An error occurred while deleting the leave approval.", "error");
+                return;
+            }
+
+            showToast("Leave approval deleted successfully.", "success");
+            refetch();
+        } catch (error) {
+            showToast("An unexpected error occurred.", "error");
+            console.error("Error deleting leave approval:", error);
+        }
+    };
 
     const handleOpenViewDialog = async (params) => {
         setViewDialogOpen(true);
@@ -106,7 +126,7 @@ const Leave_Approvals = () => {
 
             <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} sx={{ m: 'auto' }}>
                 <Box sx={{ minWidth: '400px', p: 2 }}>
-                    <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
+                    <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure you want to delete the record?</Typography>
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
                         <Btn type="sure" onClick={() => { handleDelete(selectedRow); handleCloseDeleteDialog(); }} style={{ color: theme.palette.primary.light, borderRadius: "8px" }}>Sure</Btn>
                         <Btn type="close" onClick={handleCloseDeleteDialog} style={{ color: theme.palette.error.light, borderRadius: "8px" }}>Close</Btn>

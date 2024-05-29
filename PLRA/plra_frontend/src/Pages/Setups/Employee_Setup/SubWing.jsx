@@ -1,17 +1,18 @@
-import React, { Fragment, useState } from "react";
-import { Typography, Box, Grid, Dialog } from "@mui/material";
+import React, { Fragment, useState, useCallback, useMemo } from "react";
+import { Typography, Box, Grid } from "@mui/material";
 import { useTheme } from "@emotion/react";
-import { toast } from 'react-toastify'
-import { Warning } from '../../../Assets/Icons';
+import { showToast } from '../../../Components/Common/ToastCard'
 import { WingHeader } from '../../../Data/Setup_Data/Setup_Data'
 import {
   MyTableContainer, Multi_Dropdown, Btn,
-  InputField, Loader, ErrorHandler
+  InputField, Loader, ErrorHandler, DialogBox
 } from "../../../Components/index.js";
 import { useGetWingQuery, useGetSubWingQuery, usePostSubWingMutation, useUpdateSubWingMutation, useDeleteSubWingMutation } from '../../../Features/API/API';
+import StatusCodeHandler from "../../../Components/Common/StatusCodeHandler.jsx";
 
 const SubWing = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   //States
   const [formData, setFormData] = useState({ wing: '', sub_wing_name: '', sub_wind_id: '' });
@@ -35,13 +36,14 @@ const SubWing = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setIsRowSelected(false)
     setFormData({ wing: '', sub_wing_name: '', sub_wind_id: '' })
-    setWingName("")
-  }
+    setWingName(""),
+      setFormErrors({});
+  }, []);
 
-  const handleRowClick = (event) => {
+  const handleRowClick = useCallback((event) => {
     setIsRowSelected(true);
     setFormData({
       wing: event.row.wing.w_rec_id,
@@ -50,97 +52,110 @@ const SubWing = () => {
     });
     setWingName(event.row.wing.wing_name)
     setSelectedRowID(event.row.sw_rec_id);
-  };
+  }, []);
 
-  const handleDeleteDialog = () => {
+  const handleDeleteDialog = useCallback(() => {
     if (isRowSelected) { setDeleteDialog(true) }
-    else { toast.error("Record not selected.", { position: "top-center", autoClose: 3000 }) }
-  }
+    else { return showToast('Record not Selected', 'error'); }
+  }, [isRowSelected]);
 
   const handleSaveData = async (e) => {
     e.preventDefault();
-    if (formData.wing == '', formData.sub_wing_name == '', formData.sub_wind_id == '') {
-      toast.error("Mandatory field's should not be empty.", { position: "top-center", autoClose: 3000 })
-    }
-    else {
-      try {
-        const res = await postSubWing(formData);
-        if (res.error) {
-          if (res.error.status === 400) { toast.error("ID alredy exist.", { position: "top-center", autoClose: 3000 }) }
-          else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
+
+    try {
+      const res = await postSubWing(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-        else {
-          toast.success("SubWing create successfully.", { position: "top-center", autoClose: 3000 })
-          setFormData({ sub_wind_id: '', sub_wing_name: '', wing: "" });
-          setWingName("")
-          subwingRefetch();
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
         }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      catch (err) { console.error('Error creating wing:', err); }
+      showToast(`Record created Successfully`, "success");
+      resetForm();
+      subwingRefetch();
     }
+    catch (err) { showToast(`${err.message}`, "error"); }
   };
 
-  const handleDeleteData = async (e) => {
+  const handleDeleteData = useCallback(async () => {
     try {
       // Call the API to update the record
       const res = await deleteSubWing({ selectRowID, deleteSubWingData: formData });
       // Error handling
-      if (res.error) {
-        if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-        else if (res.error.status === 409) { return toast.error("Record deletion failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-        else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      // Success case
-      toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 3000 });
-      setFormData({ wing: '', sub_wing_name: '', sub_wind_id: '' });
-      setWingName("")
-      setIsRowSelected(false)
+      showToast(`Record Deleted Successfully`, "success");
+      resetForm();
       subwingRefetch();
     } catch (err) {
-      console.error('Error updating wing:', err);
-      toast.error(err.message, { position: "top-center", autoClose: 3000 });
+      return showToast(`${err.message}`, "error");
     }
+  }, [deleteSubWing, selectRowID, subwingRefetch]);
 
-  }
-
-  const handleUpdateData = async (e) => {
+  const handleUpdateData = useCallback(async (e) => {
     try {
       const res = await updateSubWing({ selectRowID, updateSubWingData: formData });
-      if (res.error) {
-        if (res.error.status === 400) { return toast.error("ID already exists.", { position: "top-center", autoClose: 3000 }) }
-        else if (res.error.status === 409) { return toast.error("Record updation failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-        else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      toast.success("Record Updated successfully.", { position: "top-center", autoClose: 3000 });
-      setFormData({ sub_wind_id: '', sub_wing_name: '', wing: "" });
-      setIsRowSelected(false)
-      setWingName("")
+      showToast(`Record updated Successfully`, "success");
+      resetForm();
       subwingRefetch();
     }
-    catch (err) { console.error('Error creating wing:', err); }
-  }
+    catch (err) {
+      showToast(`${err.message}`, "error");
+    }
+  }, [updateSubWing, selectRowID, formData, subwingRefetch]);
 
-  const wingClickHandler = (selectedRow) => {
+  const wingClickHandler = useCallback((selectedRow) => {
     setWingName(selectedRow.wing_name)
     setFormData((prevData) => ({ ...prevData, wing: selectedRow.w_rec_id }))
     setWingDialogOpen(false);
-  }
+  }, []);
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       field: 'sub_wind_id',
       headerName: 'Sub Wing ID',
       type: 'numeric',
-      minWidth: 200,
-      style: { "backgroundColor": "var(--green-main)", "color": "white" }, renderCell: (params) => {
+      minWidth: 150,
+      renderCell: (params) => {
         const onView = () => { handleRowClick(params) };
-        return (<span onClick={onView} className='table_first_column' style={{ color: "#379237", textDecoration: 'underline' }}>  {params.value} </span>);
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       },
     },
-    { field: 'sub_wing_name', headerName: 'Sub Wing Name', type: 'alphaNumeric', minWidth: 200, },
-    { field: 'wing.wing_name', headerName: 'Wing', type: 'alphaNumeric', minWidth: 200, valueGetter: (params) => params.row.wing ? params.row.wing.wing_name : '' },
-  ];
-
+    {
+      field: 'sub_wing_name', headerName: 'Sub Wing Name', type: 'alphaNumeric', minWidth: 200, renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
+    {
+      field: 'wing.wing_name', headerName: 'Wing', type: 'alphaNumeric', minWidth: 200, valueGetter: (params) => params.row.wing ? params.row.wing.wing_name : '', renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
+  ], [handleRowClick]);
 
   return (
     <Fragment>
@@ -148,33 +163,44 @@ const SubWing = () => {
         <Typography variant='h4' sx={{ width: '100%', color: theme.palette.primary.main, fontWeight: '500', fontSize: '20px' }}>Sub Wing</Typography>
         <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
         <Btn onClick={isRowSelected ? () => setEditDialog(true) : handleSaveData} type="save" />
+        {
+          editDialog ?
+            <DialogBox
+              open={editDialog}
+              onClose={() => setEditDialog(false)}
+              closeClick={() => setEditDialog(false)}
+              sureClick={() => { handleUpdateData(); setEditDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type='delete' onClick={handleDeleteDialog} />
-        <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-          <Box sx={{ minWidth: '400px', p: 2 }}>
-            <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-              <Btn type="sure" onClick={() => { handleDeleteData(); setDeleteDialog(false); }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-              <Btn type="close" onClick={() => setDeleteDialog(false)} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-            </Box>
-          </Box>
-        </Dialog>
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setDeleteDialog(false)}
+              closeClick={() => setDeleteDialog(false)}
+              sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
 
       <form action="">
         <Grid container columnSpacing={8} spacing={{ xs: 1, md: 4 }} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 2 }}>
-            <InputField name="sub_wind_id" label="Sub Wing ID" placeholder="Enter Sub Wing ID" type="text" value={formData.sub_wind_id} onChange={handleChange} mandatory InputState={isRowSelected ? true : false} />
+            <InputField name="sub_wind_id" label="Sub Wing ID" placeholder="Enter Sub Wing ID" type="text" value={formData.sub_wind_id} onChange={handleChange} mandatory InputState={isRowSelected ? true : false} error={formErrors?.data?.sub_wind_id} />
             {wingData && wingData.results ?
               <div sx={{ cursor: 'pointer' }}>
-                <InputField name="wing" label="Wing" placeholder="Select Wing" value={wingName || ""} type="text" isShowIcon={true} onClick={() => setWingDialogOpen(true)} mandatory />
+                <InputField name="wing" label="Wing" placeholder="Select Wing" value={wingName || ""} type="text" isShowIcon={true} onClick={() => setWingDialogOpen(true)} mandatory error={formErrors?.data?.wing} />
                 <Multi_Dropdown isOpen={wingDialogOpen} onClose={() => setWingDialogOpen(false)} tableHeader={WingHeader} tableRows={wingData.results} onSelect={wingClickHandler} RowFilterWith="w_rec_id" />
               </div>
               :
-              <InputField name="wing" label="Wing" placeholder="Select Wing" value={wingName || ""} type="text" isShowIcon={true} onClick={() => setWingDialogOpen(true)} mandatory />
+              <InputField name="wing" label="Wing" placeholder="Select Wing" value={wingName || ""} type="text" isShowIcon={true} onClick={() => setWingDialogOpen(true)} mandatory error={formErrors?.data?.wing} />
             }
           </Grid>
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
-            <InputField name="sub_wing_name" label="Sub Wing Name" placeholder="Enter Sub Wing Name" type="text" value={formData.sub_wing_name} onChange={handleChange} mandatory />
+            <InputField name="sub_wing_name" label="Sub Wing Name" placeholder="Enter Sub Wing Name" type="text" value={formData.sub_wing_name} onChange={handleChange} mandatory error={formErrors?.data?.sub_wing_name} />
           </Grid>
         </Grid>
       </form>
@@ -193,28 +219,14 @@ const SubWing = () => {
                   isAddNewButton={true}
                   customPageSize={10}
                   RowFilterWith="sub_wind_id"
-                  minHeight={'calc(100vh - 350px)'}
+                  minHeight={'calc(100vh - 384px)'}
                   onRowClick={handleRowClick}
                 />
               ) : null
             )}
         </>
       )}
-
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '400px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Do you want to update your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleUpdateData(); setEditDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setEditDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-
     </Fragment>
-
   )
-
 }
-
 export default SubWing;

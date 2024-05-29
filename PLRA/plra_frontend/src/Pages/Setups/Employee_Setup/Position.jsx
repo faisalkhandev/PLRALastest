@@ -1,20 +1,19 @@
-import React, { Fragment, useEffect, useState } from 'react'
-import { Typography, Box, Grid, Dialog, Switch } from '@mui/material'
+import React, { Fragment, useEffect, useLayoutEffect, useState } from 'react'
+import { Typography, Box, Grid, Switch, Stack, Button } from '@mui/material'
 import { useTheme } from '@emotion/react'
-import { toast } from 'react-toastify'
-import { Btn, InputField, MyTableContainer, Multi_Dropdown, Loader, ErrorHandler } from '../../../Components/index'
+import { Btn, InputField, MyTableContainer, Multi_Dropdown, Loader, ErrorHandler, DialogBox } from '../../../Components/index'
 import {
   useGetPositionQuery, useGetPositionTypeQuery, useGetWingQuery,
   usePostPositionMutation, useGetCenterQuery, useUpdatePositionMutation, useGetJobQuery,
-  useDeletePositionMutation, useGetSubWingIDQuery
+  useDeletePositionMutation, useGetSubWingIDQuery, useGetAllPositionQuery
 } from '../../../Features/API/API'
 import { SubWingHeader, WingHeader, PositionTypeHeader, JobHeader, CenterHeader } from '../../../Data/Setup_Data/Setup_Data'
-import { Warning } from '../../../Assets/Icons';
-
-
+import { showToast } from '../../../Components/Common/ToastCard'
+import StatusCodeHandler from '../../../Components/Common/StatusCodeHandler';
 
 const Position = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   //states
   const [formData, setFormData] = useState({
@@ -40,10 +39,13 @@ const Position = () => {
   const [isOpenPosition, setIsOpenPosition] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [fieldsDisable, setfieldsDisable] = useState(false);
-
+  const [activeTab, setActiveTab] = useState('center'); // 'center' or 'all'
+  const [tableData, setTableData] = useState([]);
+  const [rowFilter, setRowFilter] = useState('p_rec_id');
 
   // Queries
   const { data, isLoading: loading, isError: refreshError, error: queryError, refetch } = useGetPositionQuery();
+  const { data: allPositionData, isLoading: allPosloading, isError: allPosrefreshError, error: allPosqueryError, refetch: allPosrefetch } = useGetAllPositionQuery();
   const { data: wingData, Loading: WingLoading, isError: WingRefreshError, error: WingQueryError, refetch: RefetchWing } = useGetWingQuery();
   const { data: subWingData, Loading: SubWingLoading, isError: SubWingRefreshError, error: SubwingQueryError1, refetch: RefetchSubWing } = useGetSubWingIDQuery({ selectedWing });
   const { data: positionTypeData, Loading: PositionTypeLoading, isError: PositionTypeRefreshError, error: PositionTypeQueryError, refetch: RefetchPositionType } = useGetPositionTypeQuery();
@@ -53,17 +55,42 @@ const Position = () => {
   const [updatePosition] = useUpdatePositionMutation();
   const [deletePosition] = useDeletePositionMutation();
 
-  console.log(data);
+  useLayoutEffect(() => {
+    const fetchData = async () => {
+      try {
+        let apiData;
+        if (activeTab === 'center') {
+          apiData = allPositionData;
+          setRowFilter('p_rec_id'); // Set the rowFilter to 'p_rec_id' for 'center'
+          allPosrefetch();
+        } else {
+          apiData = data;
+          setRowFilter('p_rec_id'); // Set the rowFilter to 'w_rec_id' for 'all positions'
+          refetch();
+        }
+        setTableData(apiData.results);
+      } catch (error) {
+        console.error('Error fetching data:', error);
 
+      }
+    };
 
+    fetchData();
+  }, [activeTab]);
 
   // functions
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
+
   useEffect(() => {
+    allPosrefetch();
     refetch();
     RefetchWing();
     RefetchSubWing();
@@ -113,12 +140,13 @@ const Position = () => {
       position_active: event.row.position_active,
       job: event.row.job.j_rec_id,
       location: event.row.location.c_rec_id,
-      position_id: event.row.position_id, position_desc: event.row.position_desc,
+      position_id: event.row.position_id,
+      position_desc: event.row.position_desc,
       wing: event.row.wing.w_rec_id, sub_wing: event.row.sub_wing.sw_rec_id, position_type: event.row.position_type.p_t_rec_id,
     });
 
     setIsRowSelected(true);
-    setfieldsDisable(true)
+    setfieldsDisable(true);
     setCenterName(event.row.location.center_name)
     setJobName(event.row.job.job_title)
     setSubWingName(event.row.sub_wing.sub_wing_name)
@@ -130,98 +158,80 @@ const Position = () => {
   }
 
   const handleDeleteDialog = (e) => {
-    console.log("delete clicked");
     if (isRowSelected) {
       setDeleteDialog(true);
     }
     else {
-      toast.error("Record not selected.", { position: "top-center", autoClose: 3000 });
+      return showToast('Record not Selected', 'error');
     }
   }
 
   const handleSaveData = async (e) => {
     e.preventDefault();
-    if (formData.no_of_position == '' || formData.wing == '' || formData.sub_wing == '' || formData.center == ''
-
-    ) {
-      toast.error(`Mandatory field's should not be empty.`, { position: "top-center", autoClose: 3000 })
-    }
-    else {
-      try {
-
-        const res = await postPosition(formData);
-        if (res.error) {
-          if (res.error.status === 400) { toast.error("ID alredy exist.", { position: "top-center", autoClose: 3000 }) }
-          else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
-        } else {
-          toast.success("Position create successfully.", { position: "top-center", autoClose: 3000 })
-          resetForm()
-          setFormData({
-            position_desc: "", position_id: "", no_of_position: "", open_position: true,
-            full_time_equivalent: "", job: "", position_active: true,
-            location: "", wing: "", sub_wing: "", position_type: ""
-          });
-          refetch();
-          setCenterName("")
-          setJobName("")
-          setSubWingName("")
-          setWingName("")
-          setPositionTypeName("")
-        }
-      } catch (err) {
-        console.error("Error creating Position:", err);
-      }
-    }
-    // };
-
-  }
-
-
-  const handleDeleteData = async (e) => {
     try {
-      const res = await deletePosition({ selectRowID });
-      if (res.error) {
-        if (res.error.status === 409) { toast.error("Record not deleted due to connectivity.", { position: "top-center", autoClose: 3000 }) }
-        else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
+      const res = await postPosition(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       } else {
-        toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 3000 });
+        showToast(`Record created Successfully`, "success");
+        resetForm()
         setFormData({
           position_desc: "", position_id: "", no_of_position: "", open_position: true,
           full_time_equivalent: "", job: "", position_active: true,
           location: "", wing: "", sub_wing: "", position_type: ""
         });
-        resetForm()
         refetch();
+        allPosrefetch();
+        setCenterName("")
+        setJobName("")
+        setSubWingName("")
+        setWingName("")
+        setPositionTypeName("")
+        allPosrefetch();
+      }
+    } catch (err) {
+      return showToast(`${err.message}`, "error");
+    }
+  }
+
+  const handleDeleteData = async (e) => {
+    try {
+      const res = await deletePosition({ selectRowID });
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+      } else {
+        showToast(`Record Deleted Successfully`, "success");
+        setFormData({
+          position_desc: "", position_id: "", no_of_position: "", open_position: "",
+          full_time_equivalent: "", job: "",
+          location: "", wing: "", sub_wing: "", position_type: ""
+        });
+        refetch();
+        allPosrefetch();
         setCenterName("")
         setJobName("")
         setSubWingName("")
         setWingName("")
         setPositionTypeName("")
         setIsRowSelected(false)
-        setfieldsDisable(false)
-
+        refetch();
+        allPosrefetch();
       }
-      // success call 
-      // toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 3000 });
-      setFormData({
-        position_desc: "", position_id: "", no_of_position: "", open_position: "",
-        full_time_equivalent: "", job: "",
-        location: "", wing: "", sub_wing: "", position_type: ""
-      });
-      refetch();
-      setCenterName("")
-      setJobName("")
-      setSubWingName("")
-      setWingName("")
-      setPositionTypeName("")
-      setIsRowSelected(false)
-      refetch();
     } catch (err) {
-      console.error('Error Deleting Position', err);
+      return showToast(`${err.message}`, "error");
     }
-  }
+  };
 
   const resetForm = () => {
+    setFormErrors({});
     setFormData({
       no_of_position: "",
       open_position: true,
@@ -231,6 +241,7 @@ const Position = () => {
       wing: "",
       sub_wing: "",
       position_type: "",
+      position_desc: "",
     });
     setCenterName("")
     setJobName("")
@@ -246,20 +257,23 @@ const Position = () => {
 
   const handleUpdateData = async (e) => {
     try {
-      const res = await updatePosition({
-        selectRowID,
-        updatePositionData: formData,
-      });
-      if (res.error) {
-        if (res.error.status === 400) { toast.error("ID alredy exist.", { position: "top-center", autoClose: 3000 }) }
-        else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
+      const res = await updatePosition({ selectRowID, updatePositionData: formData });
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       } else {
-        toast.success("Position Updated successfully.", { position: "top-center", autoClose: 3000 });
+        showToast(`Record updated Successfully`, "success");
         setfieldsDisable(false)
         setIsRowSelected(false)
         setFormData({
           no_of_position: "", open_position: true, job: "",
-          location: "", wing: "", sub_wing: "", position_type: ""
+          location: "", wing: "", sub_wing: "", position_type: "", position_desc: ""
         });
         setCenterName("")
         setJobName("")
@@ -267,10 +281,11 @@ const Position = () => {
         setWingName("")
         setPositionTypeName("")
         refetch();
+        allPosrefetch();
         setIsRowSelected(false)
       }
     } catch (err) {
-      console.error("Error creating Position:", err);
+      showToast(`${err.message}`, "error");
     }
   };
 
@@ -279,37 +294,70 @@ const Position = () => {
     {
       field: "no_of_position", headerName: "Total Position", width: 120,
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
+        const onView = () => { handleRowClick(params) };
         return (
-          <span onClick={onView} className="table_first_column" style={{ color: "#379237", textDecoration: 'underline' }}>
-            {params.value}
-          </span>);
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       },
     },
     {
-      field: "position_type", headerName: "Type", width: 120, renderCell: (params) => {
-        return (<span>{params.row.position_type.position_type_name}</span>)
-      }
-    },
-    {
-      field: "job", headerName: "Job", width: 230,
+      field: "position_type", headerName: "Type", width: 100,
+      valueGetter: (params) => params.row?.position_type?.position_type_name || '',
       renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
         return (
-          <span >
-            {params.row.job.job_title}
-          </span>);
-      },
-    },
-    {
-      field: "location", headerName: "Center", width: 140, renderCell: (params) => {
-        return (<span>{params.row.location.center_name}</span>)
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       }
     },
     {
-      field: "wing", headerName: "Wing", width: 150, renderCell: (params) => {
-        return (<span>{params.row.wing.wing_name}</span>)
+      field: "job", headerName: "Job", width: 150,
+      valueGetter: (params) => params.row?.job?.job_title || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
+    {
+      field: "position_id", headerName: "Position ID", width: 180,
+      valueGetter: (params) => params.row?.position_id || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
+    {
+      field: "location", headerName: "Center", width: 180,
+      valueGetter: (params) => params.row?.location?.center_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      }
+    },
+    {
+      field: "wing", headerName: "Wing", width: 200,
+      valueGetter: (params) => params.row?.wing?.wing_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      }
+    },
+    {
+      field: "sub_wing", headerName: "Sub Wing", width: 200,
+      valueGetter: (params) => params.row?.sub_wing?.sub_wing_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       }
     },
     {
@@ -330,118 +378,207 @@ const Position = () => {
     },
   ];
 
+  const AllPositioncolumns = [
+    {
+      field: "no_of_position", headerName: "Total Position", width: 120,
+    },
+    {
+      field: "position_type", headerName: "Type", width: 100,
+      valueGetter: (params) => params.row?.position_type?.position_type_name || '',
 
+    },
+    {
+      field: "job", headerName: "Job", width: 150,
+      valueGetter: (params) => params.row?.job?.job_title || '',
 
+    },
+    {
+      field: "position_id", headerName: "Position ID", width: 150,
+      valueGetter: (params) => params.row?.position_id || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
+    {
+      field: "location", headerName: "Center", width: 120,
+      valueGetter: (params) => params.row?.location?.center_name || '',
+
+    },
+    {
+      field: "wing", headerName: "Wing", width: 150,
+      valueGetter: (params) => params.row?.wing?.wing_name || '',
+
+    },
+    {
+      field: "sub_wing", headerName: "Sub Wing", width: 200,
+      valueGetter: (params) => params.row?.sub_wing?.sub_wing_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      }
+    },
+    {
+      field: 'position_active', headerName: 'Active', width: 100,
+      renderCell: (params) => (
+        <span style={{ color: params.value ? 'green' : 'red' }}>
+          {params.value ? 'Active' : 'In-Active'}
+        </span>
+      )
+    },
+    {
+      field: 'open_position', headerName: 'Status', width: 100,
+      renderCell: (params) => (
+        <span style={{ color: params.value ? 'green' : 'red' }}>
+          {params.value ? 'Open' : 'Close'}
+        </span>
+      )
+    },
+  ];
 
   return (
-    <Fragment>
 
+
+    <Fragment>
       <Box sx={{ width: "100%", display: "flex", mb: 3, gap: 2, alignItems: 'center' }}>
         <Typography variant='h4' sx={{ width: '100%', color: theme.palette.primary.main, fontWeight: '500', fontSize: '20px' }}>Position</Typography>
         <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
         <Btn onClick={isRowSelected ? () => setEditDialog(true) : handleSaveData} type="save" />
+        {
+          editDialog ?
+            <DialogBox
+              open={editDialog}
+              onClose={() => setEditDialog(false)}
+              closeClick={() => setEditDialog(false)}
+              sureClick={() => { handleUpdateData(); setEditDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type='delete' onClick={handleDeleteDialog} />
-        <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-          <Box sx={{ minWidth: '400px', p: 2 }}>
-            <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-              <Btn type="sure" onClick={() => { handleDeleteData(); setDeleteDialog(false); }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-              <Btn type="close" onClick={() => setDeleteDialog(false)} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-            </Box>
-          </Box>
-        </Dialog>
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setDeleteDialog(false)}
+              closeClick={() => setDeleteDialog(false)}
+              sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
+
       <form action="">
         <Grid container columnSpacing={8} spacing={{ md: 4, xs: 2 }} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
             {jobData && jobData.results ?
               <div>
-                <InputField name="job" label="Job" placeholder="Enter Job " type="text" value={jobName} disabled={fieldsDisable} onChange={handleChange} isShowIcon={true} onClick={() => setjobTypeDialog(true)} />
+                <InputField name="job" label="Job" placeholder="Enter Job " type="text" value={jobName} disabled={fieldsDisable} onChange={handleChange} isShowIcon={true} onClick={() => setjobTypeDialog(true)} error={formErrors?.data?.job} />
                 <Multi_Dropdown isOpen={jobTypeDialog} onClose={() => setjobTypeDialog(false)} MinimumWidth={"500px"} tableRows={jobData.results} tableHeader={JobHeader} onSelect={jobClickHandler} RowFilterWith={"j_rec_id"} />
-              </div> : <InputField name="job" label="Job" placeholder="Enter Job " type="text" value={jobName} onChange={handleChange} isShowIcon={true} onClick={() => setjobTypeDialog(true)} />}
-            <InputField name="no_of_position" label="No of Position" placeholder="Enter No of Position" type="number" value={formData.no_of_position} onChange={handleChange} />
+              </div> : <InputField name="job" label="Job" placeholder="Enter Job " type="text" value={jobName} onChange={handleChange} isShowIcon={true} onClick={() => setjobTypeDialog(true)} error={formErrors?.data?.job} />
+            }
+            <InputField name="no_of_position" label="No of Position" placeholder="Enter No of Position" type="number" value={formData.no_of_position} onChange={handleChange} error={formErrors?.data?.no_of_position} />
             {positionTypeData && positionTypeData.results ?
               <div>
-                <InputField name="position_type" label="Position Type" placeholder="Enter Position Type " disabled={fieldsDisable} type="text" value={positionTypeName} isShowIcon={true} onClick={() => setPositionTypeDialog(true)} />
+                <InputField name="position_type" label="Position Type" placeholder="Enter Position Type " disabled={fieldsDisable} type="text" value={positionTypeName} isShowIcon={true} onClick={() => setPositionTypeDialog(true)} error={formErrors?.data?.position_type} />
                 <Multi_Dropdown isOpen={PositionTypeDialog} onClose={() => setPositionTypeDialog(false)} MinimumWidth={"300px"} tableRows={positionTypeData.results} tableHeader={PositionTypeHeader} onSelect={positionTypeClickHandler} RowFilterWith={"p_t_rec_id"} />
-              </div> : <InputField name="position_type" label="Position Type" placeholder="Enter Position Type " type="text" value={positionTypeName} isShowIcon={true} onClick={() => setPositionTypeDialog(true)} />}
-            <Box className="inputBox" >
-              <Typography sx={{ display: 'flex', justifyContent: 'start', mt: 0.8, gap: 8, fontSize: '14px' }} >Position Active: </Typography>
-              <Switch sx={{ ml: 7.5 }} size="small" checked={isActive} disabled={fieldsDisable}
-                onClick={(e) => {
-                  const handleIsActive = !isActive; setIsActive(handleIsActive);
-                  setFormData((prevData) => ({ ...prevData, position_active: handleIsActive }));
-                }}
-                name='active' />
-            </Box>
+              </div> : <InputField name="position_type" label="Position Type" placeholder="Enter Position Type " type="text" value={positionTypeName} isShowIcon={true} onClick={() => setPositionTypeDialog(true)} error={formErrors?.data?.position_type} />}
+
+            <InputField name="position_desc" label="Position Description" placeholder="Enter Position Description" type="text" value={formData.position_desc} disabled={fieldsDisable} onChange={handleChange} error={formErrors?.data?.position_desc} />
+
           </Grid>
-
-
 
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
             {wingData && wingData.results ?
               <div>
-                <InputField name="wing" label="Wing" placeholder="Enter Wing " type="text" value={wingName} disabled={fieldsDisable} isShowIcon={true} onClick={() => setWingDialogOpen(true)} />
+                <InputField name="wing" label="Wing" placeholder="Enter Wing " type="text" value={wingName} disabled={fieldsDisable} isShowIcon={true} onClick={() => setWingDialogOpen(true)} error={formErrors?.data?.wing} />
                 <Multi_Dropdown isOpen={WingDialogOpen} onClose={() => setWingDialogOpen(false)} MinimumWidth={"400px"} tableRows={wingData.results} tableHeader={WingHeader} onSelect={wingClickHandler} RowFilterWith={"w_rec_id"} />
-              </div> : <InputField name="wing" label="Wing" placeholder="Enter Wing " type="text" value={wingName} isShowIcon={true} onClick={() => setWingDialogOpen(true)} />
+              </div> : <InputField name="wing" label="Wing" placeholder="Enter Wing " type="text" value={wingName} isShowIcon={true} onClick={() => setWingDialogOpen(true)} error={formErrors?.data?.wing} />
             }
             {subWingData && subWingData.results ?
               <div>
-                <InputField name="sub_wing" label="Sub Wing" placeholder="Enter SubWing " type="text" value={subWingName} isShowIcon={true} onClick={() => setSubWingDialogOpen(true)} disabled={subWingDisable} />
+                <InputField name="sub_wing" label="Sub Wing" placeholder="Enter SubWing " type="text" value={subWingName} isShowIcon={true} onClick={() => setSubWingDialogOpen(true)} disabled={subWingDisable} error={formErrors?.data?.sub_wing} />
                 <Multi_Dropdown isOpen={SubWingDialogOpen} onClose={() => setSubWingDialogOpen(false)} MinimumWidth={"400px"} tableRows={subWingData.results} tableHeader={SubWingHeader} onSelect={subWingClickHandler} RowFilterWith={"sw_rec_id"} />
               </div>
               :
-              <InputField name="sub_wing" label="Sub Wing" placeholder="Enter SubWing " type="text" value={subWingName} isShowIcon={true} onClick={() => setSubWingDialogOpen(true)} disabled={subWingDisable} />}
+              <InputField name="sub_wing" label="Sub Wing" placeholder="Enter SubWing " type="text" value={subWingName} isShowIcon={true} onClick={() => setSubWingDialogOpen(true)} disabled={subWingDisable} error={formErrors?.data?.sub_wing} />}
             {centerData && centerData.results ?
               <div>
-                <InputField name="location" label="Center" placeholder="Select Center Location" disabled={fieldsDisable} type="text" value={centerName || ""} onClick={() => setCenterDialogOpen(true)} isShowIcon={true} />
+                <InputField name="location" label="Center" placeholder="Select Center Location" disabled={fieldsDisable} type="text" value={centerName || ""} onClick={() => setCenterDialogOpen(true)} isShowIcon={true} error={formErrors?.data?.location} />
                 <Multi_Dropdown isOpen={CenterDialogOpen} onClose={() => setCenterDialogOpen(false)} MinimumWidth={"660px"} tableRows={centerData.results} tableHeader={CenterHeader} onSelect={centerClickHandler} RowFilterWith={"c_rec_id"} />
-              </div> : <InputField name="location" label="Center Location" placeholder="Select Center Location" type="text" value={centerName} onClick={() => setCenterDialogOpen(true)} />}
-            <Box className="inputBox" >
-              <Typography sx={{ display: 'flex', justifyContent: 'start', mt: 0.8, gap: 8, fontSize: '14px' }} > Open: </Typography>
-              <Switch sx={{ ml: 15 }} size="small" checked={isOpenPosition} disabled={fieldsDisable}
-                onClick={(e) => {
-                  const handleOpenPosition = !isOpenPosition; setIsOpenPosition(handleOpenPosition);
-                  setFormData((prevData) => ({ ...prevData, open_position: handleOpenPosition }));
-                }}
-                name='isOpenPosition' />
+              </div> : <InputField name="location" label="Center Location" placeholder="Select Center Location" type="text" value={centerName} onClick={() => setCenterDialogOpen(true)} error={formErrors?.data?.location} />}
+            <Box className="inputBox" sx={{ width: "100%", display: 'flex' }} >
+              <Box sx={{ width: "40%", display: 'flex', justifyContent: 'start' }}>
+                <Typography sx={{ display: 'flex', justifyContent: 'start', mt: 0.8, gap: 8, fontSize: '14px' }} >Position Active: </Typography>
+                <Switch sx={{ ml: 8 }} size="small" checked={isActive} disabled={fieldsDisable}
+                  onClick={(e) => {
+                    const handleIsActive = !isActive; setIsActive(handleIsActive);
+                    setFormData((prevData) => ({ ...prevData, position_active: handleIsActive }));
+                  }}
+                  name='active' />
+              </Box>
+              <Box sx={{ width: "40%", display: 'flex', justifyContent: 'start' }}>
+                <Typography sx={{ display: 'flex', justifyContent: 'start', mt: 0.8, gap: 8, fontSize: '14px' }} > Open: </Typography>
+                <Switch sx={{ mx: 7.7, my: 1 }} size="small" checked={isOpenPosition} disabled={fieldsDisable}
+                  onClick={(e) => {
+                    const handleOpenPosition = !isOpenPosition; setIsOpenPosition(handleOpenPosition);
+                    setFormData((prevData) => ({ ...prevData, open_position: handleOpenPosition }));
+                  }}
+                  name='isOpenPosition' />
+              </Box>
             </Box>
           </Grid>
         </Grid>
       </form>
-
+      {/* Buttons  */}
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'flex-end', my: 2 }}>
+        <Button variant={activeTab === 'center' ? 'contained' : 'outlined'} onClick={() => handleTabChange('center')}>
+          Positions
+        </Button>
+        <Button variant={activeTab === 'all' ? 'contained' : 'outlined'} onClick={() => handleTabChange('all')}>
+          All Positions
+        </Button>
+      </Stack>
 
       {loading ? (
         <Loader placement={{ marginTop: '-100px' }} />
       ) : (
         <>
-          {refreshError ? (<ErrorHandler online={navigator.onLine} />)
+          {allPosqueryError ? (<ErrorHandler online={navigator.onLine} />)
             : (
-              data && data?.results ? (
-                <MyTableContainer
-                  columns={columns}
-                  data={data.results}
-                  isAddNewButton={true}
-                  customPageSize={8}
-                  RowFilterWith="p_rec_id"
-                  onRowClick={handleRowClick}
-                  minHeight={'calc(100vh - 430px)'}
-                />
-              ) : null
+              activeTab === 'center' ? (
+                allPositionData && allPositionData?.results ? (
+                  <MyTableContainer
+                    columns={columns}
+                    data={allPositionData.results}
+                    isAddNewButton={true}
+                    customPageSize={8}
+                    RowFilterWith={rowFilter}
+                    onRowClick={handleRowClick}
+                    minHeight={'calc(100vh - 460px)'}
+                  />
+                ) : null
+              ) : (
+                data && data?.results ? (
+                  <MyTableContainer
+                    columns={AllPositioncolumns}
+                    data={data.results}
+                    isAddNewButton={true}
+                    customPageSize={8}
+                    RowFilterWith={rowFilter}
+                    onRowClick={handleRowClick}
+                    minHeight={'calc(100vh - 460px)'}
+                  />
+                ) : null
+              )
             )}
         </>
       )}
 
 
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '350px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }} ><Warning /> Do you want to update your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleUpdateData(); setEditDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setEditDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
     </Fragment>
   )
 }

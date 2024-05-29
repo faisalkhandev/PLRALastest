@@ -3,13 +3,14 @@ import { Box } from "@mui/material";
 import {
     AngleDown, AngleUp, Check, Download, FloppyDisk, BackArrow,
     PaperClip, PenToSquare, Plus, Setting, Trash, Upload, Xmark, Rotate,
-    Angle_right_arrow
+    Angle_right_arrow,
+    PrintSolid
 } from '../../Assets/Icons/index.jsx'
 import { useTheme } from '@emotion/react';
 
 
 const Btn = (props) => {
-    const { onClick, type, innerStyle, outerStyle, iconStyle, Button_Type } = props;
+    const { onClick, type, innerStyle, outerStyle, iconStyle, Button_Type, } = props;
 
     let icon = null;
     let tooltipText = "";
@@ -23,15 +24,23 @@ const Btn = (props) => {
             icon = <Rotate />;
             tooltipText = 'Clear';
             break;
+        case 'initiate':
+            icon = <Plus />;
+            tooltipText = 'Initiate';
+            break;
         case 'new':
             icon = <Plus />;
             tooltipText = 'New';
             break;
-        case 'apply': 
+        case 'initiate inquiry':
+            icon = <Plus />;
+            tooltipText = 'Inquiry';
+            break;
+        case 'apply':
             icon = <Plus />;
             tooltipText = 'Apply';
             break;
-        case 'Apply_New_Leave': 
+        case 'Apply_New_Leave':
             icon = <Plus />;
             tooltipText = 'Apply New Leave';
             break;
@@ -98,6 +107,10 @@ const Btn = (props) => {
         case 'apply':
             icon = <ApplyArrow />;
             tooltipText = 'Apply Now';
+            break;
+        case 'print':
+            icon = <PrintSolid />;
+            tooltipText = 'Print';
             break;
         default:
             icon = null;

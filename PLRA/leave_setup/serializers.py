@@ -7,6 +7,7 @@ class BaseSerializer(serializers.ModelSerializer):
         model_name = self.Meta.model.__name__
         model = globals()[model_name]
         instance = model(**validated_data)
+        instance.clean()
         instance.save()
         return instance
     def update(self, instance, validated_data):
@@ -130,7 +131,7 @@ class ApprovalsListSerializer(BaseSerializer):
         fields = '__all__'
 
 class SuperApprovalsListSerializer(BaseSerializer):
-    leave = LeaveApplySerializer()
+    leave = LeaveApply_list_Serializer()
     approving_authority = EmployeeSerializers()
     class Meta:
         model = SuperApprovals
@@ -150,6 +151,7 @@ class NewLeaveApprovalSerializer(BaseSerializer):
 class NewApprovalsSerializer(BaseSerializer):
     approving_authority = NewApprovingAuthoritySerializer()
     leave_approval = NewLeaveApprovalSerializer()
+    
 
     class Meta:
         model = Approvals
@@ -157,6 +159,7 @@ class NewApprovalsSerializer(BaseSerializer):
 
 class NewSuperApprovalsSerializer(BaseSerializer):
     approving_authority = NewApprovingAuthoritySerializer()
+    designation = serializers.CharField(default='Leave Alternate Approval')
 
     class Meta:
         model = SuperApprovals

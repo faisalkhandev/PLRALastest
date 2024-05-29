@@ -12,9 +12,11 @@ class RatingModel(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField()
     year = models.ForeignKey(HRCelanderYear, models.PROTECT)
+    active = models.BooleanField(default=True)
     type = models.CharField(max_length=50, choices=TYPE_CHOICES)
+    job= models.ForeignKey(Job, models.PROTECT)
     class Meta:
-        unique_together = ['year', 'type']
+        unique_together = ['year', 'type','job','active']
     def __str__(self):
         return f"{self.type} - {self.year}"
 class RatingTypeLikertScale(models.Model):
@@ -42,7 +44,7 @@ class RatingTypePoints(models.Model):
         null=True,
         limit_choices_to={'type': 'Points'}
     )
-    category = models.CharField(max_length=50)
+    category = models.CharField(max_length=70)
     max_points = models.IntegerField()
     type = models.CharField(max_length=50, choices=TYPE_CHOICES)
     api = models.BooleanField(default=False, blank=True, null=True)
@@ -51,23 +53,35 @@ class RatingTypePoints(models.Model):
         return self.category
 
 class AARprescribedForm(models.Model):
-    job = models.OneToOneField(Job, models.SET_NULL, null=True)
+    job = models.ForeignKey(Job, models.PROTECT,unique=True)
     head_office = models.BooleanField(default=False)
     def __str__(self):
         return str(self.job)
 class AARProcess(models.Model):
     status_choices = (
-        ('In process', 'In process'),
+        ('In process', 'In Process'),
         ('Completed', 'Completed')
     )
     employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
     year = models.ForeignKey(HRCelanderYear, models.PROTECT)
     aar_apply_Date = models.DateField(auto_now=True)
     notes = models.TextField(blank=True,null=True)
+    is_head_office=models.BooleanField(default=False)
     attachments = models.ImageField(upload_to='media/aar_process',blank=True,null=True)
     job_description = models.TextField(blank=True,null=True)
     brief_achievements = models.TextField(blank=True,null=True)
     status = models.CharField(max_length=20, choices=status_choices, default='In process')
+
+    def clean(self):
+        # Check if the employee has already initiated AARProcess for the same year
+        existing_aar_process = AARProcess.objects.filter(
+            employee=self.employee,
+            year=self.year
+        ).exclude(
+            id=self.id
+        )
+        if existing_aar_process.exists():
+            raise ValidationError("You have already initiated AARProcess for the same year.")
     def __str__(self):
         return f"AAR Process for {self.employee} - {self.year}"
     def save(self, *args, **kwargs):
@@ -76,12 +90,17 @@ class AARProcess(models.Model):
             emp_job = self.employee.position.job
             res = AARprescribedForm.objects.filter(job=emp_job)
             if not res:
-                r_m_a_list=RatingModel.objects.filter(year=self.year)
+                r_m_a_list = RatingModel.objects.filter(year=self.year,  active=True,type="Points")
+                if not r_m_a_list.exists():
+                    # If no active models are found for the current year, get models from the previous year
+                    previous_year = HRCelanderYear.objects.get(year=self.year.year - 1)
+                    r_m_a_list = RatingModel.objects.filter(year=previous_year,  active=True)
                 if not r_m_a_list:
                     raise ValidationError("Performance Rating Model Doesn't exsist..")
                 else:
+                    self.is_head_office=False
                     for model in r_m_a_list:
-                        if model.type == "Points":
+                        if model.type == "Points" :
                             r_t_p = RatingTypePoints.objects.filter(rating_model=model)
                             for i in r_t_p: 
                                 if i.api:
@@ -91,7 +110,8 @@ class AARProcess(models.Model):
                                         aar_request_id=self,
                                         category=i.category,
                                         max_points=i.max_points,
-                                        point_earned=api_point,
+                                        system_generated_points=i.max_points,
+                                        point_earned=i.max_points,
                                         employee=self.employee
                                     )
                                     instance.save()
@@ -100,14 +120,15 @@ class AARProcess(models.Model):
                                         aar_request_id=self,
                                         category=i.category,
                                         max_points=i.max_points,
+                                        system_generated_points=i.max_points,
+                                        point_earned=i.max_points,
                                         employee=self.employee,
                                     )
                                     instance.save()
-                        AARReportingOfficerApproval.objects.create(visible=True,aar_process=self,reporting_officer=self.employee.reporting_officer if self.employee.reporting_officer else None)
-                        AARCounterAssigningOfficerApproval.objects.create(aar_process=self,counter_assigning_officer=self.employee.counter_assigning_officer if self.employee.counter_assigning_officer else None)
-                     
-
+                    AARReportingOfficerApproval.objects.create(visible=True,aar_process=self,reporting_officer=self.employee.reporting_officer if self.employee.reporting_officer else None)
+                    AARCounterAssigningOfficerApproval.objects.create(aar_process=self,counter_assigning_officer=self.employee.counter_assigning_officer if self.employee.counter_assigning_officer else None)
             else:
+                self.is_head_office=True
                 AARHOReportingOfficerApproval.objects.create(visible=True,aar_process=self,reporting_officer=self.employee.reporting_officer if self.employee.reporting_officer else None)
                 AARHOCounterAssigningOfficerApproval.objects.create(aar_process=self,counter_assigning_officer=self.employee.counter_assigning_officer if self.employee.counter_assigning_officer else None)         
         super(AARProcess,self).save(*args, **kwargs)
@@ -116,7 +137,7 @@ class AARReportingOfficerApproval(models.Model):
         ("In Process", "In Process"),
         ("Approved", "Approved"),
     ]
-    aar_process=models.ForeignKey(AARProcess, on_delete=models.PROTECT)
+    aar_process=models.ForeignKey(AARProcess, on_delete=models.PROTECT,related_name="aarreportingofficerapproval_set")
     reporting_officer=models.ForeignKey(Employee, on_delete=models.PROTECT,related_name="AARReportingOfficerApproval",blank=True,null=True)
     visible=models.BooleanField(default=False)
     over_All_grading=models.ForeignKey(RatingTypeLikertScale,on_delete=models.PROTECT,blank=True,null=True)
@@ -139,10 +160,10 @@ class AARCounterAssigningOfficerApproval(models.Model):
         ("Approved", "Approved"),
     ]
     SERVICE_LEVEL_CHOICES = [
-        ('very_good', 'Very Good'),
-        ('good', 'Good'),
-        ('average', 'Average'),
-        ('below_average', 'Below Average'),
+        ('Very Good', 'Very Good'),
+        ('Good', 'Good'),
+        ('Average', 'Average'),
+        ('Below Average', 'Below Average'),
     ]
     aar_process=models.ForeignKey(AARProcess, on_delete=models.PROTECT)
     counter_assigning_officer=models.ForeignKey(Employee, on_delete=models.PROTECT,related_name="AARCounterAssigningOfficerApproval",blank=True,null=True)
@@ -260,6 +281,7 @@ class AARHOCounterAssigningOfficerApproval(models.Model):
     )
     visible=models.BooleanField(default=False)
     aar_process=models.ForeignKey(AARProcess, on_delete=models.PROTECT)
+    over_All_grading=models.ForeignKey(RatingTypeLikertScale,on_delete=models.PROTECT,blank=True,null=True)
     counter_assigning_officer=models.ForeignKey(Employee, on_delete=models.PROTECT,related_name="AARCounterAssigningOfficerApprovals",blank=True,null=True)
     frequency_of_work = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, blank=True, null=True)
     know_the_officer = models.TextField(blank=True, null=True)
@@ -290,9 +312,10 @@ class AARHOCounterAssigningOfficerApproval(models.Model):
 
 class RatingTypePointsAssignment(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.PROTECT,blank=True,null=True)
-    aar_request_id=models.ForeignKey(AARProcess, on_delete=models.CASCADE)
+    aar_request_id=models.ForeignKey(AARProcess, on_delete=models.CASCADE,related_name="RatingTypePointsAssignment")
     category = models.CharField(max_length=50)
     max_points = models.IntegerField()
+    system_generated_points =models.IntegerField(blank=True,null=True)
     point_earned = models.IntegerField(blank=True,null=True)
     def __str__(self):
         if self.point_earned is not None:

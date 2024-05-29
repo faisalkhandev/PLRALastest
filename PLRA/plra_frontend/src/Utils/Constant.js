@@ -8,7 +8,7 @@ const PrivateRoutes = () => {
 
     const varify_user = () => {
         const data=false
-        // const data = localStorage.getItem('token');
+
         if (data) {
             return true
         }

@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useState } from "react";
 import { Typography, Grid, Box, Dialog } from "@mui/material";
 import { useTheme } from "@emotion/react";
 import { Warning } from "../../../Assets/Icons/index.jsx";
@@ -7,6 +7,7 @@ import {
   Btn,
   Multi_Dropdown,
   InputField,
+  DialogBox,
 } from "../../../Components/index.js";
 import {
   useGetSalaryDeductibleQuery,
@@ -17,9 +18,12 @@ import {
   useUpdateSalaryDeductibleTypeMutation
 } from "../../../Features/API/SetupApi";
 import { toast } from "react-toastify";
+import { showToast } from "../../../Components/shared/Toast_Card.jsx";
+import StatusCodeHandler from "../../../Components/Common/StatusCodeHandler.jsx";
 
 function SalaryDeductibles() {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   const [formData, setFormData] = useState({ leave_type: "", ppg_level: "" });
   const [ID, useDeductibleTypeID] = useState("");
@@ -69,48 +73,30 @@ function SalaryDeductibles() {
 
   const handleSaveData = async (e) => {
     e.preventDefault();
-
-    if (formData.ppg_level === "" || formData.leave_type === "") {
-      toast.error(`Mandatory fields should not be empty.`, {
-        position: "top-center",
-        autoClose: 3000,
-      });
-    }
-    else {
-      try {
-        const res = await SalaryDeductionType(formData);
-        if (res.error) {
-          if (res.error.status === 500) {
-            return toast.error("Server is not working", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          } else if (res.error.status === 400) {
-            return toast.error("Record alredy exist.", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          } else {
-            return toast.error("Unexpected Error Occurred", {
-              position: "top-center",
-              autoClose: 3000,
-            });
-          }
+    try {
+      const res = await SalaryDeductionType(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
-        toast.success("Record Updated successfully.", {
-          position: "top-center",
-          autoClose: 1000,
-        });
-        setIsRowSelected(false);
-        useDeductibleTypeID('')
-        setFormData({ leave_type: "", ppg_level: "" });
-        setLeaveName("");
-        setPpgLevelName("");
-        refetch();
-      } catch (error) {
-        showToast("Failed to save data", "error");
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-    };
+      showToast(`Record created Successfully`, "success");
+      resetForm();
+      setIsRowSelected(false);
+      useDeductibleTypeID('')
+      setFormData({ leave_type: "", ppg_level: "" });
+      setLeaveName("");
+      setPpgLevelName("");
+      refetch();
+    } catch (error) {
+      showToast(`${err.message}`, "error");
+    }
+
   }
   const handleUpdateData = async () => {
     try {
@@ -120,73 +106,51 @@ function SalaryDeductibles() {
         ppg_level: formData.ppg_level
       }
       const res = await UpdateSalaryDeductibleType({ ID, updatedata });
-      if (res.error) {
-        if (res.error.status === 400) {
-          return toast.error("ID already exists.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record updation failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      toast.success("Record Updated successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      showToast(`Record updated Successfully`, "success");
+      resetForm();
       setIsRowSelected(false);
       setFormData({ leave_type: "", ppg_level: "" });
       setLeaveName("");
       setPpgLevelName("");
       refetch();
     } catch (err) {
-      console.error("Error creating wing:", err);
+      showToast(`${err.message}`, "error");
     }
   };
 
   const handleDeleteRecord = async () => {
     try {
       const res = await deleteSarayDeductibleType(ID);
-      if (res.error) {
-        if (res.error.status === 500) {
-          return toast.error("Server is not working", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record deletion failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
       // success call
-      toast.success("Record delete successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      showToast(`Record Deleted Successfully`, "success");
+      resetForm();
       setIsRowSelected(false);
       setFormData({ leave_type: "", ppg_level: "" });
       setLeaveName("");
       setPpgLevelName("");
       refetch();
     } catch (err) {
-      console.error("Error Deleting Record:", err);
-      toast.error(err.message, { position: "top-center", autoClose: 3000 });
+      showToast(`${err.message}`, "error");
+
     }
+  };
+
+  const resetForm = () => {
+    setFormErrors({});
   };
 
   const handleEmptyDelete = () => {
@@ -197,6 +161,7 @@ function SalaryDeductibles() {
   };
 
   const handleReset = () => {
+    resetForm();
     setIsRowSelected(false);
     useDeductibleTypeID("")
     setFormData({ leave_type: "", ppg_level: "" });
@@ -215,6 +180,13 @@ function SalaryDeductibles() {
     setPpgLevelName(event?.row?.ppg_level?.ppg_level);
   };
 
+  const handleDeleteDialog = useCallback(() => {
+    if (isRowSelected) {
+      setdeleteSalaryDeductibleDialog(true);
+    } else {
+      return showToast('Record not Selected', 'error');
+    }
+  }, [isRowSelected]);
 
   // Headers 
   const LeaveTypeHeader = [
@@ -254,14 +226,11 @@ function SalaryDeductibles() {
       field: "leave_type",
       headerName: "Leave Type",
       minWidth: 200,
+      valueGetter: (params) => params.row?.leave_type?.leave_type || '',
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
+        const onView = () => { handleRowClick(params) };
         return (
-          <span onClick={onView} className="table_first_column">
-            {params.row.leave_type.leave_type}
-          </span>
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
         );
       },
     },
@@ -269,14 +238,11 @@ function SalaryDeductibles() {
       field: "ppg_level",
       headerName: "PPG Level",
       minWidth: 200,
+      valueGetter: (params) => params.row?.ppg_level?.ppg_level || '',
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
+        const onView = () => { handleRowClick(params) };
         return (
-          <span onClick={onView} className="table_first_column">
-            {params.row.ppg_level.ppg_level}
-          </span>
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
         );
       },
     },
@@ -285,62 +251,38 @@ function SalaryDeductibles() {
   return (
     <Fragment>
       <form action="">
-        <Box
-          sx={{
-            width: "100%",
-            display: "flex",
-            mb: 4,
-            gap: 2,
-            alignItems: "center",
-            mt: 0.8,
-          }}
-        >
-          <Typography
-            variant="h4"
-            sx={{
-              width: "100%",
-              color: theme.palette.primary.main,
-              fontWeight: "500",
-              fontSize: "20px",
-            }}
-          >
+        <Box sx={{ width: "100%", display: "flex", mb: 4, gap: 2, alignItems: "center", mt: 0.8, }}  >
+          <Typography variant="h4" sx={{ width: "100%", color: theme.palette.primary.main, fontWeight: "500", fontSize: "20px", }}  >
             {" "}
             Salary Deductible Rule
           </Typography>
-          <Btn
-            type="reset"
-            outerStyle={{
-              width: 1,
-              display: "flex",
-              justifyContent: "end",
-              marginRight: 1,
-            }}
-            onClick={handleReset}
-          />
-          <Btn
-            type="save"
-            onClick={
-              isRowSelected ? () => setUpdateSalaryDeductibleDialog(true)
-                : handleSaveData
-            }
-          />
-          <Btn
-            type="delete"
-            onClick={
-              isRowSelected
-                ? () => setdeleteSalaryDeductibleDialog(true)
-                : handleEmptyDelete
-            }
-          />
+          <Btn type="reset" outerStyle={{ width: 1, display: "flex", justifyContent: "end", marginRight: 1, }} onClick={handleReset} />
+          <Btn type="save" onClick={isRowSelected ? () => setUpdateSalaryDeductibleDialog(true) : handleSaveData} />
+          {
+            updateSalaryDeductibleDialog ?
+              <DialogBox
+                open={editDialog}
+                onClose={() => setUpdateSalaryDeductibleDialog(false)}
+                closeClick={() => setUpdateSalaryDeductibleDialog(false)}
+                sureClick={() => { handleUpdateData(); setUpdateSalaryDeductibleDialog(false); }}
+                title={"Are you sure you want to update the record?"}
+              /> : ''
+          }
+          <Btn type="delete" onClick={handleDeleteDialog} />
+          {/* {
+            deleteSalaryDeductibleDialog ?
+              <DialogBox
+                open={deleteDialog}
+                onClose={() => setdeleteSalaryDeductibleDialog(false)}
+                closeClick={() => setDeleteDialog(false)}
+                sureClick={() => setdeleteSalaryDeductibleDialog(false)}
+                title={"Are you sure you want to delete the record?"}
+              /> : ''
+          } */}
         </Box>
         <Box sx={{ margin: "10px 0" }}>
           <Grid container spacing={{ xs: 1, md: 4 }}>
-            <Grid
-              item
-              xs={12}
-              md={6}
-              sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-            >
+            <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: "column", gap: 1 }}  >
               {LeaveTypeData && LeaveTypeData.results ? (
                 <div>
                   <InputField
@@ -354,6 +296,8 @@ function SalaryDeductibles() {
                     onClick={() => {
                       setIsCenterDialog(true);
                     }}
+                    error={formErrors?.data?.leave_type}
+
                   />
                   <Multi_Dropdown
                     isOpen={centerDialog}
@@ -373,6 +317,8 @@ function SalaryDeductibles() {
                   type="text"
                   isShowIcon={true}
                   value={leaveName}
+                  error={formErrors?.data?.center}
+
                 />
               )}
             </Grid>
@@ -395,6 +341,8 @@ function SalaryDeductibles() {
                     onClick={() => {
                       setIsPPGDialog(true);
                     }}
+                    error={formErrors?.data?.ppg_level}
+
                   />
                   <Multi_Dropdown
                     isOpen={PPGDialog}
@@ -414,6 +362,7 @@ function SalaryDeductibles() {
                   type="text"
                   isShowIcon={true}
                   value={ppgLevelName}
+                  error={formErrors?.data?.ppg_level}
                 />
               )}
             </Grid>
@@ -434,97 +383,28 @@ function SalaryDeductibles() {
         />
       )}
 
-      <Dialog
-        open={updateSalaryDeductibleDialog}
-        onClose={() => setUpdateSalaryDeductibleDialog(false)}
-        sx={{ m: "auto" }}
-      >
+      {/* <Dialog open={updateSalaryDeductibleDialog} onClose={() => setUpdateSalaryDeductibleDialog(false)} sx={{ m: "auto" }}>
         <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
+          <Typography variant="h6" color="initial" sx={{ display: "flex", alignItems: "center", gap: 1 }}  >
             <Warning />
             Do you want to update that record.
           </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleUpdateData();
-                setUpdateSalaryDeductibleDialog(false);
-              }}
-              iconStyle={{ color: theme.palette.primary.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setUpdateSalaryDeductibleDialog(false)}
-              iconStyle={{ color: theme.palette.error.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
+          <Box sx={{ width: "100%", display: "flex", justifyContent: "end", mt: 4, gap: 1, }}   >
+            <Btn type="sure" onClick={() => { handleUpdateData(); setUpdateSalaryDeductibleDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px", }} />
+            <Btn type="close" onClick={() => setUpdateSalaryDeductibleDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px", }} />
           </Box>
         </Box>
-      </Dialog>
-      <Dialog
-        open={deleteSalaryDeductibleDialog}
-        onClose={() => setdeleteSalaryDeductibleDialog(false)}
-        sx={{ m: "auto" }}
-      >
+      </Dialog> */}
+      <Dialog open={deleteSalaryDeductibleDialog} onClose={() => setdeleteSalaryDeductibleDialog(false)} sx={{ m: "auto" }}  >
         <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
+          <Typography variant="h6" color="initial" sx={{ display: "flex", alignItems: "center", gap: 1 }}  >
             <Warning />
             Do you want to delete that record.
           </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleDeleteRecord();
-                setdeleteSalaryDeductibleDialog(false);
-              }}
-              iconStyle={{ color: theme.palette.primary.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setdeleteSalaryDeductibleDialog(false)}
-              iconStyle={{ color: theme.palette.error.light }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
+          <Box sx={{ width: "100%", display: "flex", justifyContent: "end", mt: 4, gap: 1, }}  >
+            <Btn type="sure" onClick={() => { handleDeleteRecord(); setdeleteSalaryDeductibleDialog(false); }}
+              iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px", }} />
+            <Btn type="close" onClick={() => setdeleteSalaryDeductibleDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px", }} />
           </Box>
         </Box>
       </Dialog>

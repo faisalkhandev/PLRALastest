@@ -1,16 +1,20 @@
 import React, { Fragment, useEffect, useState } from 'react';
 import { Typography, Grid, Box, Button } from '@mui/material';
 import { useTheme } from '@emotion/react';
-import { Btn, MyTableContainer, SimpleDropDown } from '../../../Components/index';
+import { Btn, InputField, Multi_Dropdown, MyTableContainer, SimpleDropDown } from '../../../Components/index';
 import '../../Styles.css';
 import { useDeleteCompetentAuthorityMutation, useGetCompetentAuthorityQuery, useGetEmpPositionQuery, usePostCompetentAuthorityMutation } from '../../../Features/API/SetupApi';
 import { toast } from 'react-toastify';
+import { useGetPositionQuery } from '../../../Features/API/API';
+import { showToast } from '../../../Components/shared/Toast_Card';
+import StatusCodeHandler from '../../../Components/Common/StatusCodeHandler';
 
 
 
 
 const CompetentAuthority = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   // Queries
   const [PostCompetentAuthority] = usePostCompetentAuthorityMutation();
@@ -22,6 +26,8 @@ const CompetentAuthority = () => {
     label: position?.position_id,
     value: position?.p_rec_id
   }));
+  const { data: PositionData, isLoading: Positionloading, isError: PoitionrefreshError, error: PoitionqueryError, Poitionrefetch } = useGetPositionQuery();
+
 
   const { data: competentData, refetch: competentRefetch } = useGetCompetentAuthorityQuery();
 
@@ -33,9 +39,15 @@ const CompetentAuthority = () => {
 
   const [deleteCompetentAuthority] = useDeleteCompetentAuthorityMutation();
 
-  console.log('positionID: ', positionID)
-  console.log('competentData:', competentData)
 
+  const PosHeader = [
+    { field: 'position_id', headerName: 'Position ID', minWidth: 300, },
+    { field: 'job?.job_title', headerName: 'Job Title', minWidth: 350, valueGetter: (params) => params.row?.job?.job_title || '', },
+    { field: 'position_desc', headerName: 'Position Description', minWidth: 400, },
+    { field: 'wing', headerName: 'Wing', minWidth: 400, valueGetter: (params) => params.row?.wing?.wing_name || '', },
+    { field: 'sub_wing', headerName: 'Sub Wing', minWidth: 400, valueGetter: (params) => params.row?.sub_wing?.sub_wing_name || '', },
+
+  ];
 
   // States
   const [formData, setFormData] = useState({
@@ -47,57 +59,58 @@ const CompetentAuthority = () => {
   const [editDialog, setEditDialog] = useState(false);
   const [isRowSelected, setIsRowSelected] = useState(false);
   const [selectRowID, setSelectedRowID] = useState('');
+  const [adgDialogOpen, setAdgDialogOpen] = useState(false);
+  const [dcpDialogOpen, setDcpDialogOpen] = useState(false);
+  const [positionName, setpositionName] = useState("");
+
 
   //functions
   async function handleSaveData(e) {
     e.preventDefault();
-    if (formData.designation == '' || formData.employee_position == '') {
-      toast.error(
-        'Fields should not be empty.',
-        {
-          position: 'top-center',
-          autoClose: 3000
-        }
-      )
-    }
-    else {
-      try {
-        const res = await PostCompetentAuthority(formData)
-        if (res.error) {
-          if (res.error.status === 400) { toast.error("ID already exist", { position: "top-center", autoClose: 3000 }) }
-          else { toast.error("Something went wrong !!!", { position: "top-center", autoClose: 3000 }) }
-        } else {
-          toast.success("Rating Type Point create successfully.", { position: "top-center", autoClose: 3000 })
-          setFormData({ rating_model: '', category: '', type: ' ', max_points: '', api_address: ' ', api: false, });
-          competentRefetch();
-        }
-
-      } catch (error) {
-        toast.error('Error Creating Competent Authorithy.', {
-          position: 'top-center',
-          autoClose: 3000
-        })
+    try {
+      const res = await PostCompetentAuthority(formData)
+      if (res?.error && res.error.status) {
+        setFormErrors(res.error);
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+      } else {
+        showToast(`Rating Type Point create successfully`, "success");
+        setFormData({ rating_model: '', category: '', type: ' ', max_points: '', api_address: ' ', api: false, });
+        competentRefetch();
+        setFormErrors({});
       }
+    } catch (error) {
+      showToast(`Record created Successfully`, "success");
     }
+  }
+
+  const adgClickHandler = (selectedRow) => {
+    setpositionName(selectedRow.position_desc)
+    setFormData((prevData) => ({ ...prevData, employee_position: selectedRow.p_rec_id }))
+    setAdgDialogOpen(false);
   }
 
   function handleRowClick(event) {
     setSelectedRowID(event?.row?.id)
     setIsRowSelected(true);
+    console.log("abc", event.row);
     setFormData({
       designation: event?.row?.designation || '',
-      employee_position: event?.row?.employee_position || ''
+      employee_position: event?.row?.p_rec_id || ''
     });
     setSelectedDesignation(event?.row?.designation || null);
-    setSelectedPosition(event?.row?.employee_position || null);
+    setpositionName(event?.row?.employee_position || null)
+
 
   }
 
   function handleReset(event) {
+    setFormErrors({});
     setFormData({
       designation: '',
       employee_position: ''
     })
+    setpositionName("")
+
     setSelectedDesignation(null)
     setSelectedPosition(null)
   }
@@ -108,24 +121,23 @@ const CompetentAuthority = () => {
 
         const res = await deleteCompetentAuthority(selectRowID)
 
-        if (res.error) {
-          toast.error("Failed to delete Competent Authority.", { position: "top-center", autoClose: 3000 });
+        if (res?.error && res.error.status) {
+          setFormErrors(res?.error)
+          return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
         }
         else {
-          toast.success("Competent Authority deleted successfully.", { position: "top-center", autoClose: 3000 });
+          showToast(`Competent Authority deleted successfully`, "success");
           competentRefetch();
           handleReset();
+          setFormErrors()
         }
       }
       catch (error) {
-        console.error("Error deleting Competent Authority:", error);
-        toast.error("Error deleting Competent Authority.", { position: "top-center", autoClose: 3000 });
+        return showToast(`${error.message}`, "error");
       }
     } else {
-      toast.error("No Competent Authority selected for deletion.", { position: "top-center", autoClose: 3000 });
+      return showToast("No Record Selected", "error");
     }
-
-    console.log('deleted')
   }
 
   const designation = [
@@ -211,10 +223,12 @@ const CompetentAuthority = () => {
 
               options={designation}
               placeholder='Select Designation'
+              error={formErrors?.data?.designation}
+              helperText={formErrors?.data?.designation}
             />
           </Grid>
           <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <SimpleDropDown
+            {/* <SimpleDropDown
               name='positionID'
               label='Position'
               value={selectedPosition || ''}
@@ -228,7 +242,16 @@ const CompetentAuthority = () => {
               }
               options={positionID || ''}
               placeholder='Select Employee'
-            />
+            /> */}
+
+            {PositionData && PositionData?.results ?
+              <div sx={{ cursor: 'pointer' }}>
+                <InputField name="employee_position" label="Position" placeholder="Select  Position " value={positionName || ''} type="text" isShowIcon={true} onClick={() => setAdgDialogOpen(true)}   error={formErrors?.data?.employee_position}/>
+                <Multi_Dropdown isOpen={adgDialogOpen} onClose={() => setAdgDialogOpen(false)} tableHeader={PosHeader} tableRows={PositionData?.results || PositionData} onSelect={adgClickHandler} RowFilterWith="p_rec_id" />
+              </div>
+              :
+              <InputField name="employee_position" label="Position" placeholder="Select  " value={positionName || ''} type="text" isShowIcon={true} onClick={() => setAdgDialogOpen(true)}  error={formErrors?.data?.employee_position} />
+            }
           </Grid>
         </Grid>
       </form>

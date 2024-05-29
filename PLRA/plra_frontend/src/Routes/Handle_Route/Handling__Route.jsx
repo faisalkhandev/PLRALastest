@@ -11,6 +11,10 @@ const Handling__Route = () => {
         <div>
             <Routes>
                 {/* private route */}
+
+
+                {/* should be check this is repeated in App.js  */}
+                {/* why i make this and in app.js  */}
                 <Route path='/' element={<Private__Routes />} >
                     {privateRoutes.map((route, idx) => (
                         <Route

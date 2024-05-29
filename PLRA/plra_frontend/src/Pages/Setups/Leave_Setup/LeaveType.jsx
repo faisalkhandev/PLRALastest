@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Grid, Box, Switch, Card, Dialog } from "@mui/material";
-import { Btn, InputField, MyTableContainer } from "../../../Components/index";
+import { Typography, Grid, Box, Switch, Card } from "@mui/material";
+import { Btn, DialogBox, InputField, MyTableContainer } from "../../../Components/index";
 import { useTheme } from "@emotion/react";
 import SimpleDropdown from "../../../Components/Common/SimpleDropDown";
 import {
@@ -9,50 +9,30 @@ import {
   usePostLeaveTypeMutation,
   useUpdateLeaveTypeMutation
 } from "../../../Features/API/SetupApi";
-import { Warning } from "../../../Assets/Icons";
 import { toast } from "react-toastify";
 import { FaCheck } from "react-icons/fa6";
 import { RxCross2 } from "react-icons/rx";
+import { showToast } from "../../../Components/shared/Toast_Card";
+import StatusCodeHandler from "../../../Components/Common/StatusCodeHandler";
 
 
 
 const LeaveType = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
+
 
   // states
-  const [formData, setFormData] = useState({
-    leave_type: "",
-    leave_description: "",
-    gender_eligibility: "",
-    accrue: false,
-    prorate_calculation: false,
-    accrue_annual_limit: null,
-    balance_paid_annually: false,
-    earning_code: "",
-    entire_service_validity: false,
-    avail_number_of_times: "",
-    one_time_avail_limit: "",
-    deduction_code: "",
-    entire_service_limit: "",
-    leave_dependency: false,
-    salary_deduction_eligibility_rule: false,
-    visible_at_leave_apply_time: false,
-  });
+  const [formData, setFormData] = useState({ leave_type: "", leave_description: "", gender_eligibility: "", accrue: false, prorate_calculation: false, accrue_annual_limit: null, balance_paid_annually: false, earning_code: "", entire_service_validity: false, avail_number_of_times: "", one_time_avail_limit: "", deduction_code: "", entire_service_limit: "", leave_dependency: false, salary_deduction_eligibility_rule: false, visible_at_leave_apply_time: false, });
   const [isRowSelected, setIsRowSelected] = useState(false)
   const [isRowSelectedID, setIsRowSelectedID] = useState(null)
   const [editDialog, setEditDialog] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState(false)
-  const options = [
-    { id: 1, value: "Male", label: "Male" },
-    { id: 2, value: "Female", label: "Female" },
-    { id: 3, value: "All", label: "All" },
-  ];
-
-
-
+  const options = [{ id: 1, value: "Male", label: "Male" }, { id: 2, value: "Female", label: "Female" }, { id: 3, value: "All", label: "All" },];
 
   // Query
   const { data, loading, refetch } = useLeaveTypeQuery();
+  console.log("data = ", data);
   const [Post_Leave_Type_API] = usePostLeaveTypeMutation();
   const [DeleteLeaveType] = useDeleteLeaveTypeMutation();
   const [updateLeaveType] = useUpdateLeaveTypeMutation()
@@ -134,115 +114,90 @@ const LeaveType = () => {
   };
 
   const ResetForm = (e) => {
+    setFormErrors({});
     setIsRowSelected(false)
-    setFormData({
-      leave_type: "",
-      leave_description: "",
-      gender_eligibility: "",
-      accrue: false,
-      prorate_calculation: false,
-      accrue_annual_limit: "",
-      balance_paid_annually: false,
-      earning_code: "",
-      entire_service_validity: false,
-      avail_number_of_times: "",
-      one_time_avail_limit: "",
-      deduction_code: "",
-      entire_service_limit: "",
-      leave_dependency: false,
-      salary_deduction_eligibility_rule: false,
-      visible_at_leave_apply_time: false,
-    });
+    setFormData({ leave_type: "", leave_description: "", gender_eligibility: "", accrue: false, prorate_calculation: false, accrue_annual_limit: "", balance_paid_annually: false, earning_code: "", entire_service_validity: false, avail_number_of_times: "", one_time_avail_limit: "", deduction_code: "", entire_service_limit: "", leave_dependency: false, salary_deduction_eligibility_rule: false, visible_at_leave_apply_time: false, });
   };
 
   const handleSave = async (e) => {
 
     e.preventDefault();
-    if (formData.leave_type === "" || formData.leave_description === "" || formData.gender_eligibility === "") {
-      return toast.error(`Mandatory fields should not be empty.`, { position: "top-center", autoClose: 3000, });
-    }
-    else {
-      let Leave_Type_Data = {
-        leave_type: formData.leave_type,
-        leave_description: formData.leave_description,
-        gender_eligibility: formData.gender_eligibility,
-        visible_at_leave_apply_time: formData.visible_at_leave_apply_time,
-        salary_deduction_eligibility_rule:
-          formData.salary_deduction_eligibility_rule,
 
-        entire_service_validity: formData.entire_service_validity,
-        accrue: formData.accrue,
-        prorate_calculation: formData.prorate_calculation,
-        leave_dependency: formData.leave_dependency,
-      };
+    let Leave_Type_Data = {
+      leave_type: formData.leave_type,
+      leave_description: formData.leave_description,
+      gender_eligibility: formData.gender_eligibility,
+      visible_at_leave_apply_time: formData.visible_at_leave_apply_time,
+      salary_deduction_eligibility_rule:
+        formData.salary_deduction_eligibility_rule,
 
-      if (formData.salary_deduction_eligibility_rule) {
-        if (formData.deduction_code === "") {
-          return toast.error("Deduction Code should not be empty.", { position: "top-center", autoClose: 3000 });
-        } else {
-          Leave_Type_Data = {
-            ...Leave_Type_Data,
-            deduction_code: formData.deduction_code
-          };
-        }
-      }
+      entire_service_validity: formData.entire_service_validity,
+      accrue: formData.accrue,
+      prorate_calculation: formData.prorate_calculation,
+      leave_dependency: formData.leave_dependency,
+    };
 
-      if (formData.accrue) {
-        if (formData.accrue_annual_limit === "") {
-          return toast.error("Accrue Annual Limit should not be empty.", { position: "top-center", autoClose: 3000 });
-        } else {
-          if (formData.balance_paid_annually && formData.earning_code === "") {
-            return toast.error("Earning code should not be empty when balance_paid_annually is true.", { position: "top-center", autoClose: 3000, });
-          } else if (formData.balance_paid_annually) {
-            Leave_Type_Data = {
-              ...Leave_Type_Data,
-              earning_code: formData.earning_code,
-            };
-          }
-          Leave_Type_Data = {
-            ...Leave_Type_Data,
-            accrue_annual_limit: formData.accrue_annual_limit,
-            balance_paid_annually: formData.balance_paid_annually,
-          };
-        }
-      }
-
-      if (formData.entire_service_validity) {
+    if (formData.salary_deduction_eligibility_rule) {
+      if (formData.deduction_code === "") {
+        return toast.error("Deduction Code should not be empty.", { position: "top-center", autoClose: 3000 });
+      } else {
         Leave_Type_Data = {
           ...Leave_Type_Data,
-          avail_number_of_times: formData.avail_number_of_times,
-          one_time_avail_limit: formData.one_time_avail_limit,
+          deduction_code: formData.deduction_code
         };
       }
-
-      const res = await Post_Leave_Type_API(Leave_Type_Data);
-      if (res.error) {
-        if (res.error.status === 400) { return toast.error("ID already exists.", { position: "top-center", autoClose: 3000, }); }
-        else if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000, }) }
-        else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000, }); }
-      }
-      toast.success("Record delete successfully.", { position: "top-center", autoClose: 3000, });
-      setFormData({
-        leave_type: "",
-        leave_description: "",
-        gender_eligibility: "",
-        accrue: false,
-        prorate_calculation: false,
-        accrue_annual_limit: "",
-        balance_paid_annually: false,
-        earning_code: "",
-        entire_service_validity: false,
-        avail_number_of_times: "",
-        one_time_avail_limit: "",
-        deduction_code: "",
-        entire_service_limit: "",
-        leave_dependency: false,
-        salary_deduction_eligibility_rule: false,
-        visible_at_leave_apply_time: false,
-      });
-      setIsRowSelected(false);
-      refetch();
     }
+
+    if (formData.accrue) {
+      if (formData.accrue_annual_limit === "") {
+        return showToast('Accrue Annual Limit should not be empty.', 'error');
+      } else {
+        if (formData.balance_paid_annually && formData.earning_code === "") {
+          return showToast('Earning code should not be empty when balance_paid_annually is true.', 'error');
+        } else if (formData.balance_paid_annually) {
+          Leave_Type_Data = {
+            ...Leave_Type_Data,
+            earning_code: formData.earning_code,
+          };
+        }
+        Leave_Type_Data = {
+          ...Leave_Type_Data,
+          accrue_annual_limit: formData.accrue_annual_limit,
+          balance_paid_annually: formData.balance_paid_annually,
+        };
+      }
+    }
+
+    if (formData.entire_service_validity) {
+      Leave_Type_Data = {
+        ...Leave_Type_Data,
+        avail_number_of_times: formData.avail_number_of_times,
+        one_time_avail_limit: formData.one_time_avail_limit,
+      };
+    }
+
+    const res = await Post_Leave_Type_API(Leave_Type_Data);
+    if (res?.error && res.error.status) {
+      if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+        return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+      }
+      if (res?.error?.status === 422 && res?.error?.data?.code) {
+        return (showToast(`${res?.error?.data?.detail}`, "error"));
+      }
+      // Handle API errors here
+      setFormErrors(res?.error)
+      return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
+    }
+    refetch();
+    showToast(`Record created Successfully`, "success");
+    setFormData({
+      leave_type: "", leave_description: "", gender_eligibility: "", accrue: false, prorate_calculation: false, accrue_annual_limit: "", balance_paid_annually: false, earning_code: "", entire_service_validity: false,
+      avail_number_of_times: "", one_time_avail_limit: "", deduction_code: "", entire_service_limit: "", leave_dependency: false, salary_deduction_eligibility_rule: false, visible_at_leave_apply_time: false,
+    });
+    ResetForm();
+    setIsRowSelected(false);
+
+
   };
 
   async function handleUpdateData(e) {
@@ -289,60 +244,27 @@ const LeaveType = () => {
     try {
       const res = await updateLeaveType({ isRowSelectedID, Leave_Type_Data });
 
-      if (res.error) {
-        if (res.error.status === 400) {
-          return toast.error("ID already exists.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 500) {
-          return toast.error("Server is not working", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record updation failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
         }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
       // Success case
-      toast.success("Record Updated successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      showToast(`Record updated Successfully`, "success");
+      ResetForm();
       setIsRowSelected(false);
       setEditDialog(false);
-      setFormData({
-        leave_type: "",
-        leave_description: "",
-        gender_eligibility: "",
-        accrue: false,
-        prorate_calculation: false,
-        accrue_annual_limit: "",
-        balance_paid_annually: false,
-        earning_code: "",
-        entire_service_validity: false,
-        avail_number_of_times: "",
-        one_time_avail_limit: "",
-        deduction_code: "",
-        entire_service_limit: "",
-        leave_dependency: false,
-        salary_deduction_eligibility_rule: false,
-        visible_at_leave_apply_time: false,
-      });
+      setFormData({ leave_type: "", leave_description: "", gender_eligibility: "", accrue: false, prorate_calculation: false, accrue_annual_limit: "", balance_paid_annually: false, earning_code: "", entire_service_validity: false, avail_number_of_times: "", one_time_avail_limit: "", deduction_code: "", entire_service_limit: "", leave_dependency: false, salary_deduction_eligibility_rule: false, visible_at_leave_apply_time: false, });
       refetch(); // Move refetch here
     }
 
     catch (err) {
-      console.error("Error updating :", err);
-      toast.error(err.message, { position: "top-center", autoClose: 3000 });
+      showToast(`${err.message}`, "error");
     }
 
   }
@@ -376,45 +298,17 @@ const LeaveType = () => {
     if (isRowSelected) {
       setDeleteDialog(true)
     }
-    else {
-      toast.error("Record Not Selected", {
-        position: 'top-center',
-        autoClose: '3000'
-      })
-    }
   };
 
   async function handleDeleteData(e) {
     try {
-      console.log(isRowSelected);
-      if (!isRowSelected) {
-        return toast.error("No Record Selected", { position: "top-center", autoClose: 3000 });
-      }
-
       const res = await DeleteLeaveType(isRowSelectedID);
-      if (res.error) {
-        if (res.error.status === 500) {
-          return toast.error("Server is not working", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else if (res.error.status === 409) {
-          return toast.error("Record deletion failed due to linking.", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        } else {
-          return toast.error("Unexpected Error Occurred", {
-            position: "top-center",
-            autoClose: 3000,
-          });
-        }
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      toast.success("Record Deleted successfully.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
-
+      showToast(`Record Deleted Successfully`, "success");
+      ResetForm();
       refetch();
       setIsRowSelected(false);
       setFormData({
@@ -436,12 +330,7 @@ const LeaveType = () => {
         visible_at_leave_apply_time: false,
       });
     } catch (error) {
-      console.error("An error occurred:", error);
-      // Handle the error as needed, e.g., show a generic error message.
-      toast.error("An unexpected error occurred.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      return showToast(`${err.message}`, "error");
     }
   }
 
@@ -450,20 +339,17 @@ const LeaveType = () => {
   }, []);
 
 
-  // headers 
+  // headers
   const LeaveDependeableColumns = [
     {
       field: "leave_id",
       headerName: "Leave Type",
       minWidth: 170,
+      valueGetter: (params) => params.row?.leave_type || '',
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
+        const onView = () => { handleRowClick(params) };
         return (
-          <span onClick={onView} className="table_first_column" >
-            {params?.row?.leave_type}
-          </span>
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
         );
       },
     },
@@ -471,6 +357,12 @@ const LeaveType = () => {
       field: "gender_eligibility",
       headerName: "Gender Eligibility",
       minWidth: 150,
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
     },
     {
       field: "entire_service_validity",
@@ -536,61 +428,45 @@ const LeaveType = () => {
 
 
 
-  // Main 
+  // Main
   return (
     <Box sx={{ height: "calc(100vh - 200px)", overflowY: "scroll", pr: 1 }}>
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          mb: 4,
-          gap: 2,
-          alignItems: "center",
-          mt: 0.8,
-        }}
-      >
-        <Typography
-          variant="h4"
-          sx={{
-            width: "100%",
-            color: theme.palette.primary.main,
-            fontWeight: "500",
-            fontSize: "20px",
-          }}
-        >
+      <Box sx={{ width: "100%", display: "flex", mb: 4, gap: 2, alignItems: "center", mt: 0.8, }}  >
+        <Typography variant="h4" sx={{ width: "100%", color: theme.palette.primary.main, fontWeight: "500", fontSize: "20px", }}  >
           Leave Type Setup
         </Typography>
-        <Btn
-          type="reset"
-          outerStyle={{
-            width: 1,
-            display: "flex",
-            justifyContent: "end",
-            marginRight: 1,
-          }}
-          Button_Type={"button"}
-          onClick={ResetForm}
-        />
+        <Btn type="reset" outerStyle={{ width: 1, display: "flex", justifyContent: "end", marginRight: 1, }} Button_Type={"button"} onClick={ResetForm} />
         <Btn type="save" onClick={isRowSelected ? () => setEditDialog(true) : handleSave} />
+        {
+          editDialog ?
+            <DialogBox
+              open={editDialog}
+              onClose={() => setEditDialog(false)}
+              closeClick={() => setEditDialog(false)}
+              sureClick={() => { handleUpdateData(); setEditDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type="delete" onClick={handleDeleteDialog} />
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setDeleteDialog(false)}
+              closeClick={() => setDeleteDialog(false)}
+              sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
       <Box sx={{ margin: "10px 0", height: "calc(100vh - 61vh)", mb: 8 }}>
         {/* Section 1 */}
-        <Card
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: 'center',
-            gap: 1,
-            p: 1,
-            mb: 2,
-          }}
-        >
+        <Card sx={{ display: "flex", flexDirection: "column", alignItems: 'center', gap: 1, p: 1, mb: 2, }}  >
           <Grid container spacing={{ xs: 1, md: 4 }}>
             <Grid item xs={12} md={6} sx={{ gap: 1, display: "flex", flexDirection: "column" }}  >
-              <InputField name="leave_type" label="Leave Name" type="text" value={formData.leave_type} onChange={handleChange} mandatory={true} required />
-              <InputField name="leave_description" label="Leave Description" type="text" multiline={true} value={formData.leave_description} onChange={handleChange} mandatory={true} required />
-              <SimpleDropdown label="Gender Eligibility" value={formData.gender_eligibility} onChange={(e) => setFormData({ ...formData, gender_eligibility: e.target.value, })} options={options} mandatory required />
+              <InputField name="leave_type" label="Leave Name" type="text" value={formData.leave_type} onChange={handleChange} mandatory={true} required error={formErrors?.data?.leave_type} />
+              <InputField name="leave_description" label="Leave Description" type="text" multiline={true} value={formData.leave_description} onChange={handleChange} mandatory={true} required error={formErrors?.data?.leave_type} />
+              <SimpleDropdown label="Gender Eligibility" value={formData.gender_eligibility} onChange={(e) => setFormData({ ...formData, gender_eligibility: e.target.value, })} options={options} mandatory required error={formErrors?.data?.gender_eligibility} helperText={formErrors?.data?.gender_eligibility} />
               <Box sx={{ width: "100%", display: "flex", alignItems: "center" }} >
                 <Typography sx={{ width: "32%", display: "flex", mt: 0.8, fontSize: "14px", }} > Visible:  </Typography>
                 <Switch sx={{ mt: 1 }} size="small" name="visible_at_leave_apply_time" value={formData.visible_at_leave_apply_time || false} checked={formData.visible_at_leave_apply_time || false} onClick={() => handleSwitchChange("visible_at_leave_apply_time")} />
@@ -619,7 +495,7 @@ const LeaveType = () => {
                 <Switch sx={{ mt: 1 }} size="small" name="leave_dependency" value={formData.leave_dependency || false} checked={formData.leave_dependency || false} onClick={() => handleSwitchChange("leave_dependency")} />
               </Box>
               {formData.salary_deduction_eligibility_rule && (
-                <InputField name="deduction_code" label="Deduction Code" type="number" value={formData.deduction_code || ""} onChange={handleChange} />)}
+                <InputField name="deduction_code" label="Deduction Code" type="number" value={formData.deduction_code || ""} onChange={handleChange} error={formErrors?.data?.deduction_code} />)}
             </Grid>
           </Grid>
         </Card>
@@ -629,41 +505,18 @@ const LeaveType = () => {
             <Typography variant="h6" fontWeight={600}>Accrue Setup:</Typography>
             <Grid container spacing={{ xs: 1, md: 4 }}>
               <Grid item xs={12} md={6} sx={{ gap: 1, display: "flex", flexDirection: "column" }}  >
-                <InputField name="accrue_annual_limit" label="Accrue Annual Limit" type="number" value={formData.accrue_annual_limit} onChange={handleChange} mandatory={true} />
+                <InputField name="accrue_annual_limit" label="Accrue Annual Limit" type="number" value={formData.accrue_annual_limit} onChange={handleChange} mandatory={true} error={formErrors?.data?.accrue_annual_limit} />
                 {formData.balance_paid_annually && (
-                  <InputField name="earning_code" label="Earning Code" type="text" value={formData.earning_code} onChange={handleChange} mandatory={true} />)}
+                  <InputField name="earning_code" label="Earning Code" type="text" value={formData.earning_code} onChange={handleChange} mandatory={true} error={formErrors?.data?.earning_code} />)}
               </Grid>
-              <Grid
-                item
-                xs={12}
-                md={6}
-                sx={{ gap: 1, display: "flex", flexDirection: "column" }}
-              >
+              <Grid item xs={12} md={6} sx={{ gap: 1, display: "flex", flexDirection: "column" }}   >
                 <Box
-                  sx={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
+                  sx={{ width: "100%", display: "flex", alignItems: "center", }}  >
                   <Typography
-                    sx={{
-                      width: "40%",
-                      display: "flex",
-                      mt: 0.8,
-                      fontSize: "14px",
-                    }}
-                  >
+                    sx={{ width: "40%", display: "flex", mt: 0.8, fontSize: "14px", }}  >
                     Balance Paid Annually:
                   </Typography>
-                  <Switch
-                    sx={{ mt: 1 }}
-                    size="small"
-                    name="balance_paid_annually"
-                    value={formData.balance_paid_annually || false}
-                    checked={formData.balance_paid_annually || false}
-                    onClick={handleBalancePaidAnnuallyChange}
-                  />
+                  <Switch sx={{ mt: 1 }} size="small" name="balance_paid_annually" value={formData.balance_paid_annually || false} checked={formData.balance_paid_annually || false} onClick={handleBalancePaidAnnuallyChange} />
                 </Box>
               </Grid>
             </Grid>
@@ -671,54 +524,17 @@ const LeaveType = () => {
         ) : null}
         {/* Section 3 */}
         {formData.entire_service_validity ? (
-          <Card
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
-              p: 1,
-              mb: 2,
-            }}
-          >
+          <Card sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1, mb: 2, }} >
             <Typography variant="h6" fontWeight={600}>
               Service validity setup:
             </Typography>
             <Grid container spacing={{ xs: 1, md: 4 }}>
-              <Grid
-                item
-                xs={12}
-                md={6}
-                sx={{ gap: 1, display: "flex", flexDirection: "column" }}
-              >
-                <InputField
-                  name="avail_number_of_times"
-                  label="Avail no. of Times"
-                  type="number"
-                  value={formData.avail_number_of_times}
-                  onChange={handleChange}
-                />
-                <InputField
-                  name="one_time_avail_limit"
-                  label="Days Available Time"
-                  type="number"
-                  value={formData.one_time_avail_limit}
-                  onChange={handleChange}
-                />
+              <Grid item xs={12} md={6} sx={{ gap: 1, display: "flex", flexDirection: "column" }}   >
+                <InputField name="avail_number_of_times" label="Avail no. of Times" type="number" value={formData.avail_number_of_times} onChange={handleChange} error={formErrors?.data?.avail_number_of_times} />
+                <InputField name="one_time_avail_limit" label="Days Available Time" type="number" value={formData.one_time_avail_limit} onChange={handleChange} error={formErrors?.data?.one_time_avail_limit} />
               </Grid>
-              <Grid
-                item
-                xs={12}
-                md={6}
-                sx={{ gap: 1, display: "flex", flexDirection: "column" }}
-              >
-                <InputField
-                  name="entire_service_limit"
-                  label="Entire Service Limit"
-                  type="number"
-                  value={formData.entire_service_limit}
-                  onChange={handleChange}
-                  InputState={true}
-                />
+              <Grid item xs={12} md={6} sx={{ gap: 1, display: "flex", flexDirection: "column" }}    >
+                <InputField name="entire_service_limit" label="Entire Service Limit" type="number" value={formData.entire_service_limit} onChange={handleChange} InputState={true} error={formErrors?.data?.entire_service_limit} />
               </Grid>
             </Grid>
           </Card>
@@ -730,7 +546,7 @@ const LeaveType = () => {
       {data && (
         <MyTableContainer
           columns={LeaveDependeableColumns}
-          data={data.results}
+          data={data?.results}
           isAddNewButton={true}
           customPageSize={7}
           RowFilterWith="leave_id"
@@ -739,102 +555,7 @@ const LeaveType = () => {
         />
       )}
 
-
-      <Dialog
-        open={editDialog}
-        onClose={() => setEditDialog(false)}
-        sx={{ m: "auto" }}
-      >
-        <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Warning />
-            Are you sure to update record.
-          </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleUpdateData();
-                setEditDialog(false);
-              }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setEditDialog(false)}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Box>
-      </Dialog>
-
-      <Dialog
-        open={deleteDialog}
-        onClose={() => setDeleteDialog(false)}
-        sx={{ m: "auto" }}
-      >
-        <Box sx={{ minWidth: "400px", p: 2 }}>
-          <Typography
-            variant="h6"
-            color="initial"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <Warning />
-            Are you sure to delete record.
-          </Typography>
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "end",
-              mt: 4,
-              gap: 1,
-            }}
-          >
-            <Btn
-              type="sure"
-              onClick={() => {
-                handleDeleteData();
-                setDeleteDialog(false);
-              }}
-              outerStyle={{
-                border: `2px solid ${theme.palette.primary.light}`,
-                borderRadius: "8px",
-              }}
-            />
-            <Btn
-              type="close"
-              onClick={() => setDeleteDialog(false)}
-              outerStyle={{
-                border: `2px solid ${theme.palette.error.light}`,
-                borderRadius: "8px",
-              }}
-            />
-          </Box>
-        </Box>
-      </Dialog>
-
-
     </Box>
-
   );
 };
 

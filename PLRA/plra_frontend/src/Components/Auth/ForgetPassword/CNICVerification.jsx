@@ -1,6 +1,5 @@
 import React from 'react'
 import { Box, Grid, Typography } from '@mui/material'
-import Logo from '../../../Assets/png/Logo1.png'
 import { useTheme } from '@emotion/react';
 import InputMask from 'react-input-mask';
 import { Link } from 'react-router-dom'
@@ -15,7 +14,7 @@ const CNICVerification = ({ onStepChange }) => {
     <Box sx={{ with: '100%', height: "100vh", overflow: 'hidden', mt: 0 }}>
       <Grid container spacing={6}>
         <Grid item xs={12} md={6} sx={{ width: "100%", height: "107vh", display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: theme.palette.primary[200] }}>
-          <img src={Logo} alt="" style={{ width: "450px" }} />
+          <img src={"/static/Logo.png"} alt="" style={{ width: "450px" }} />
         </Grid>
 
 

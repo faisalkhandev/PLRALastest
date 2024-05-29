@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useMemo, useEffect, Fragment } from 'react';
-import { Typography, Grid, Box, Dialog } from '@mui/material';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Typography, Grid, Box } from '@mui/material';
 import { useTheme } from '@emotion/react';
-import { Btn, InputField, Multi_Dropdown, MyTableContainer, Loader, ErrorHandler } from '../../../Components/index';
-import { useGetCenterQuery, usePostCenterMutation, useUpdateCenterMutation, useDeleteCenterMutation, useGetDistrictIDQuery, useGetDivisionIDQuery, useGetTehsilIDQuery, useGetDistrictQuery, useGetRegionQuery, useGetDivisionQuery, useGetTehsilQuery } from '../../../Features/API/API';
-import { toast } from 'react-toastify'
-import { Warning } from '../../../Assets/Icons';
+import { Btn, InputField, Multi_Dropdown, MyTableContainer, Loader, ErrorHandler, DialogBox } from '../../../Components/index';
+import { useGetCenterQuery, usePostCenterMutation, useUpdateCenterMutation, useDeleteCenterMutation, useGetDistrictIDQuery, useGetDivisionIDQuery, useGetTehsilIDQuery, useGetRegionQuery } from '../../../Features/API/API';
+import { showToast } from '../../../Components/Common/ToastCard'
 import { RegionHeader, districtHeader, divisionHeader, tehsilHeader } from "../../../Data/Setup_Data/Setup_Data";
+import StatusCodeHandler from '../../../Components/Common/StatusCodeHandler';
 
 const Center = () => {
   const theme = useTheme();
+  const [formErrors, setFormErrors] = useState({});
 
   // States
   const [formData, setFormData] = useState({ center_id: '', district: '', region: '', center_name: '', division: '', tehsil: '' });
@@ -43,6 +44,7 @@ const Center = () => {
 
   // Functions
   const resetForm = useCallback(() => {
+    setFormErrors({});
     setIsRowSelected(false)
     setFormData({ center_id: '', district: '', region: '', center_name: '', division: '', tehsil: '' });
     setRegionData(""); setDivisionData(""); setDistrictData(""); setTehsilData(""); setTehsilDisable(true); setDivisionDisable(true); setDistrictDisable(true);
@@ -52,7 +54,6 @@ const Center = () => {
     const { name, value } = event.target;
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   }, []);
-
   // Dialog Click Listeners
   const regionClickHandler = useCallback((selectedRow) => {
     setRegionData(selectedRow.region_name)
@@ -92,18 +93,15 @@ const Center = () => {
   const handleDeleteData = useCallback(async (e) => {
     try {
       const res = await deleteCenter({ selectRowID, deleteSubWingData: formData });
-      if (res.error) {
-        if (res.error.status === 409) { toast.error("Record not deleted due to connectivity.", { position: "top-center", autoClose: 3000 }) }
-        else { toast.error("Something is wrong!!!", { position: "top-center", autoClose: 3000 }) }
-      } else {
-        toast.success("Record Deleted successfully.", { position: "top-center", autoClose: 3000 });
-        setIsRowSelected(false)
-        setFormData({ center_id: '', district: '', region: '', center_name: '', division: '', tehsil: '' });
-        setRegionData(""); setDivisionData(""); setDistrictData(""); setTehsilData("")
-        refetch();
+      if (res?.error && res.error.status) {
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
+      showToast(`Record Deleted Successfully`, "success");
+      resetForm();
+      refetch();
     } catch (err) {
-      console.error('Error Deleting Sub Wing:', err);
+      return showToast(`${err.message}`, "error");
     }
   }, [deleteCenter, formData, selectRowID]);
 
@@ -129,73 +127,53 @@ const Center = () => {
       setDeleteDialog(true)
     }
     else {
-      toast.error("Record not selected.", { position: "top-center", autoClose: 3000 });
+      return showToast('Record not Selected', 'error');
     }
   }, [isRowSelected]);
 
   const handleSaveData = useCallback(async (e) => {
     e.preventDefault();
-    if (formData.center_id == '' || formData.center_name == '' || formData.region == '' ||
-      formData.division == '' || formData.district == '' || formData.tehsil == '') {
-      toast.error(`Mandatory field's should not be empty.`, { position: "top-center", autoClose: 3000 })
-    }
-    else {
-      try {
-        const res = await postCenter(formData);
-        if (res.error) {
-          if (res.error.status === 400) { toast.error("ID already exist", { position: "top-center", autoClose: 3000 }) }
-          else { toast.error("Something went wrong !!!", { position: "top-center", autoClose: 3000 }) }
-        } else {
-          toast.success("Data create successfully.", { position: "top-center", autoClose: 3000 })
-          setFormData({ center_id: '', center_name: '', region: '', division: '', district: '', tehsil: '' });
-          setDistrictData(""); setRegionData(""); setDivisionData(""); setTehsilData("")
-          refetch();
-        }
-      } catch (err) {
-        console.error('Error creating Center:', err, { position: "top-center", autoClose: 3000 });
-      }
-    };
-  }, [formData, postCenter]);
-
-  const handleDelete = useCallback(async (e) => {
     try {
-      // call api
-      const res = await deleteCenter({ selectRowID })
-      // error handling 
-      if (res.error) {
-        if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-        else if (res.error.status === 409) { return toast.error("Record deletion failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-        else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+      const res = await postCenter(formData);
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      // success call 
-      toast.success("Center deleted.", { position: "top-center", autoClose: 3000 })
-      setFormData({ center_id: '', center_name: '', region: '', division: '', district: '', tehsil: '' });
-      setDistrictData(""); setRegionData(""); setDivisionData(""); setTehsilData("")
-      setIsRowSelected(false)
-      refetch()
+      showToast(`Record created Successfully`, "success");
+      resetForm();
+      refetch();
+    } catch (err) {
+      showToast(`${err.message}`, "error");
     }
-    catch (err) {
-      console.error('Error creating District:', err);
-    }
-  }, [deleteCenter, formData, selectRowID]);
+  }, [formData, postCenter]);
 
   const handleUpdateData = useCallback(async (e) => {
     try {
       // Call the API to update the record
       const res = await updateCenter({ selectRowID, updateCenterData: formData });
       // Error handling
-      if (res.error) {
-        if (res.error.status === 400) { return toast.error("ID already exists.", { position: "top-center", autoClose: 3000 }) }
-        else if (res.error.status === 500) { return toast.error("Server is not working", { position: "top-center", autoClose: 3000 }) }
-        else if (res.error.status === 409) { return toast.error("Record updation failed due to linking.", { position: "top-center", autoClose: 3000 }) }
-        else { return toast.error("Unexpected Error Occurred", { position: "top-center", autoClose: 3000 }) }
+      if (res?.error && res.error.status) {
+        if (res?.error?.status == 400 && res?.error?.data?.non_field_errors) {
+          return showToast(`${res?.error?.data?.non_field_errors}`, "error");
+        }
+        if (res?.error?.status === 422 && res?.error?.data?.code) {
+          return (showToast(`${res?.error?.data?.detail}`, "error"));
+        }
+        setFormErrors(res?.error)
+        return showToast(<StatusCodeHandler error={res.error.status} />, 'error');
       }
-      // Success case
-      toast.success("Center Updated successfully.", { position: "top-center", autoClose: 3000 });
-      setFormData({ center_id: '', center_name: '', region: '', division: '', district: '', tehsil: '' });
-      setDistrictData(""); setRegionData(""); setDivisionData(""); setTehsilData("")
+      showToast(`Record updated Successfully`, "success");
+      resetForm();
       refetch();
-    } catch (err) { console.error('Error creating Center:', err, { position: "top-center", autoClose: 3000 }); }
+    } catch (err) {
+      showToast(`${err.message}`, "error");
+    }
   }, [formData, selectRowID, updateCenter]);
 
   const columns = useMemo(() => [
@@ -204,76 +182,119 @@ const Center = () => {
       headerName: 'Center ID',
       minWidth: 120,
       renderCell: (params) => {
-        const onView = () => {
-          handleRowClick(params);
-        };
-        return (<span onClick={onView} className='table_first_column' style={{ color: "#379237", textDecoration: 'underline' }}>{params.value} </span>);
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       },
     },
-    { field: 'center_name', headerName: 'Center', minWidth: 250 },
+    {
+      field: 'center_name', headerName: 'Center', minWidth: 250, renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
+    },
     {
       field: 'region_id', headerName: 'Region', minWidth: 170,
-      renderCell: (params) => { return (<span > {params.row.region.region_name} </span>); },
+      renderCell: (params) => {
+        return (<span > {params.row.region.region_name} </span>);
+      },
     },
     {
       field: 'division_id', headerName: 'Division', flex: true,
+      valueGetter: (params) => params.row?.division?.division_name || '',
       renderCell: (params) => {
-        return (<span > {params.row.division.division_name} </span>);
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
       },
     },
     {
       field: 'district_id', headerName: 'District', flex: true,
-      renderCell: (params) => { return (<span > {params.row.district.district_name} </span>); },
+      valueGetter: (params) => params.row?.district?.district_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
     },
     {
       field: 'tehsil_id', headerName: 'Tehsil', flex: true,
-      renderCell: (params) => { return (<span > {params.row.tehsil.t_name} </span>); },
+      valueGetter: (params) => params.row?.tehsil?.t_name || '',
+      renderCell: (params) => {
+        const onView = () => { handleRowClick(params) };
+        return (
+          <span onClick={onView} className='table_first_column'>{params.value}</span>
+        );
+      },
     },
   ], [handleRowClick]);
 
   return (
-    <Fragment>
-
+    <Box sx={{ width: "100%" }}>
       <Box sx={{ width: "100%", display: "flex", mb: 3, gap: 2, alignItems: 'center' }}>
         <Typography variant='h4' sx={{ width: '100%', color: theme.palette.primary.main, fontWeight: '500', fontSize: '20px' }}>Center</Typography>
         <Btn type="reset" onClick={resetForm} outerStyle={{ width: 1, display: 'flex', justifyContent: 'end' }} />
         <Btn onClick={isRowSelected ? () => setEditDialog(true) : handleSaveData} type="save" />
+        {
+          editDialog ?
+            <DialogBox
+              open={editDialog}
+              onClose={() => setEditDialog(false)}
+              closeClick={() => setEditDialog(false)}
+              sureClick={() => { handleUpdateData(); setEditDialog(false); }}
+              title={"Are you sure you want to update the record?"}
+            /> : ''
+        }
         <Btn type="delete" onClick={handleDeleteDialog} />
+        {
+          deleteDialog ?
+            <DialogBox
+              open={deleteDialog}
+              onClose={() => setDeleteDialog(false)}
+              closeClick={() => setDeleteDialog(false)}
+              sureClick={() => { handleDeleteData(); setDeleteDialog(false); }}
+              title={"Are you sure you want to delete the record?"}
+            /> : ''
+        }
       </Box>
-
       <form action="">
         <Grid container columnSpacing={8} spacing={{ xs: 1, md: 4 }} sx={{ mb: 4, }}>
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
-            <InputField name="center_id" label="Center ID " placeholder="Enter Center ID" type="text" value={formData.center_id || ""} onChange={handleChange} mandatory InputState={isRowSelected ? true : false} />
+            <InputField name="center_id" label="Center ID " placeholder="Enter Center ID" type="text" value={formData.center_id || ""} onChange={handleChange} mandatory InputState={isRowSelected ? true : false} error={formErrors?.data?.center_id} />
 
-            {region_data && region_data.results ?
+            {region_data && region_data?.results ?
               <div>
-                <InputField name="region" label="Region" placeholder="Select Region" value={regionData} isShowIcon={true} onClick={() => setRegionDialog(true)} />
+                <InputField name="region" label="Region" placeholder="Select Region" value={regionData} isShowIcon={true} onClick={() => setRegionDialog(true)} mandatory error={formErrors?.data?.region} />
                 <Multi_Dropdown RowFilterWith={"r_rec_id"} isOpen={regionDialog} onClose={() => setRegionDialog(false)} MinimumWidth={"400px"} tableHeader={RegionHeader} tableRows={region_data.results} onSelect={regionClickHandler} />
-              </div> : <InputField name="region" label="Region" placeholder="Select Region" value={regionData} isShowIcon={true} onClick={() => setRegionDialog(true)} />
+              </div> : <InputField name="region" label="Region" placeholder="Select Region" value={regionData} isShowIcon={true} onClick={() => setRegionDialog(true)} error={formErrors?.data?.region} />
             }
 
             {district_data && district_data ?
               <div >
-                <InputField name="district_id" label="District " placeholder="Enter District" value={districtData} isShowIcon={true} type="text" onClick={() => setDistrictDialog(true)} disabled={districtDisable} />
+                <InputField name="district_id" label="District " placeholder="Enter District" value={districtData} isShowIcon={true} type="text" onClick={() => setDistrictDialog(true)} disabled={districtDisable} error={formErrors?.data?.district_id} />
                 <Multi_Dropdown RowFilterWith={"district_rec_id"} isOpen={districtDialog} onClose={() => setDistrictDialog(false)} MinimumWidth={"400px"} tableHeader={districtHeader} tableRows={district_data.results} onSelect={districtClickHandler} />
-              </div> : <InputField name="district_id" label="District " placeholder="Enter District" isShowIcon={true} value={districtData} type="text" onClick={() => setDistrictDialog(true)} />
+              </div> : <InputField name="district_id" label="District " placeholder="Enter District" isShowIcon={true} value={districtData} type="text" onClick={() => setDistrictDialog(true)} error={formErrors?.data?.district_id} />
             }
           </Grid>
           <Grid item xs={12} md={6} sx={{ display: "flex", flexDirection: 'column', gap: 1 }}>
-            <InputField name="center_name" label="Center Name" placeholder="Enter Center Name" type="text" value={formData.center_name || ""} onChange={handleChange} mandatory />
+            <InputField name="center_name" label="Center " placeholder="Enter Center Name" type="text" value={formData.center_name || ""} onChange={handleChange} mandatory error={formErrors?.data?.center_name} />
 
             {division_data && division_data ?
               <div>
-                <InputField name="division_id" label="Division" placeholder="Select Division Name " type="text" isShowIcon={true} value={divisionData} onChange={handleChange} onClick={() => setDivisionDialog(true)} disabled={divisionDisable} />
+                <InputField name="division_id" label="Division" placeholder="Select Division Name " type="text" isShowIcon={true} value={divisionData} onChange={handleChange} onClick={() => setDivisionDialog(true)} disabled={divisionDisable} error={formErrors?.data?.division_id} />
                 <Multi_Dropdown RowFilterWith={"d_rec_id"} isOpen={divisionDialog} onClose={() => setDivisionDialog(false)} MinimumWidth={"400px"} tableHeader={divisionHeader} tableRows={division_data.results} onSelect={divisionClickHandler} />
-              </div> : <InputField name="division_id" label="Division" placeholder="Select Division Name " type="text" isShowIcon={true} value={divisionData} onChange={handleChange} onClick={() => setDivisionDialog(true)} />
+              </div> : <InputField name="division_id" label="Division" placeholder="Select Division Name " type="text" isShowIcon={true} value={divisionData} onChange={handleChange} onClick={() => setDivisionDialog(true)} error={formErrors?.data?.division_id} />
             }
             {tehsil_data && tehsil_data ?
               <div >
-                <InputField name="t_id" label="Tehsil" placeholder="Select Tehsil Name " type="text" value={tehsilData} isShowIcon={true} onChange={handleChange} onClick={() => setTehsilDialog(true)} disabled={tehsilDisable} />
+                <InputField name="t_id" label="Tehsil" placeholder="Select Tehsil Name " type="text" value={tehsilData} isShowIcon={true} onChange={handleChange} onClick={() => setTehsilDialog(true)} disabled={tehsilDisable} error={formErrors?.data?.t_id} />
                 <Multi_Dropdown RowFilterWith={"t_rec_id"} isOpen={tehsilDialog} tableHeader={tehsilHeader} onClose={() => setTehsilDialog(false)} MinimumWidth={"400px"} tableRows={tehsil_data.results} onSelect={tehsilClickHandler} />
-              </div> : <InputField name="t_id" label="Tehsil" placeholder="Select Tehsil Name " type="text" isShowIcon={true} value={tehsilData} onChange={handleChange} onClick={() => setTehsilDialog(true)} />
+              </div> : <InputField name="t_id" label="Tehsil" placeholder="Select Tehsil Name " type="text" isShowIcon={true} value={tehsilData} onChange={handleChange} onClick={() => setTehsilDialog(true)} error={formErrors?.data?.t_id} />
             }
           </Grid>
         </Grid>
@@ -294,42 +315,13 @@ const Center = () => {
                   RowFilterWith="c_rec_id"
                   onRowClick={handleRowClick}
                   outerCSS={{ mt: 4 }}
-                  minHeight={'calc(100vh - 390px)'}
+                  minHeight={'calc(100vh - 414px)'}
                 />
               ) : null
             )}
         </>
       )}
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '400px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Do you want to delete your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleDelete(); setDeleteDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setDeleteDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-
-
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '400px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning /> Do you want to Update your data.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleUpdateData(); setEditDialog(false); }} iconStyle={{ color: theme.palette.primary.light }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setEditDialog(false)} iconStyle={{ color: theme.palette.error.light }} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} sx={{ m: 'auto' }}>
-        <Box sx={{ minWidth: '400px', p: 2 }}>
-          <Typography variant="h6" color="initial" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Warning />Are you sure to delete record.</Typography>
-          <Box sx={{ width: '100%', display: 'flex', justifyContent: 'end', mt: 4, gap: 1 }}>
-            <Btn type="sure" onClick={() => { handleDeleteData(); setDeleteDialog(false); }} outerStyle={{ border: `2px solid ${theme.palette.primary.light}`, borderRadius: "8px" }} />
-            <Btn type="close" onClick={() => setDeleteDialog(false)} outerStyle={{ border: `2px solid ${theme.palette.error.light}`, borderRadius: "8px" }} />
-          </Box>
-        </Box>
-      </Dialog>
-    </Fragment>
+    </Box>
   );
 };
 

@@ -1,13 +1,13 @@
 // Import necessary dependencies and components
 import './App.css';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { privateRoutes } from './Routes/Routes';
 import Layout from './Layout/Layout.jsx';
 import { Login, RecoverPassword } from './Pages';
 import PageNotFound from './Pages/PageNotFound/PageNotFound';
 import 'react-toastify/dist/ReactToastify.css';
 import PrivateRoute from './Utils/Private__Routes.jsx';
+import ToastCard from './Components/Common/ToastCard.jsx';
 
 const App = () => {
   return (
@@ -31,7 +31,7 @@ const App = () => {
           <Route exact path='*' element={<PageNotFound />} />
         </Routes>
       </Router>
-      <ToastContainer />
+      <ToastCard />
     </div>
   );
 }
