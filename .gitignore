@@ -26,10 +26,19 @@ dist-ssr
 *.sln
 *.sw?
  
- 
- 
-/migrations
-/__pycache__
-db.sqlite3
+# Django Project 
+
+*__pycache__
+*.sqlite3
 *.pyc
-PLRA/db.sqlite3
+*/migrations/*
+!*/migrations/__init__.py
+*media
+# *.png
+# *.jpeg
+# *.jpg
+# *.csv
+# *.pdf
+# *.webp
+# *.gif
+# *.txt
